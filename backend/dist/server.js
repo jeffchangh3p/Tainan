@@ -18,7 +18,7 @@ app.use((0, cors_1.default)({
     origin: true,
     credentials: true,
 }));
-app.use(express_1.default.json({ limit: '5mb' }));
+app.use(express_1.default.json({ limit: '50mb' }));
 // Request logging
 app.use((req, _res, next) => {
     console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);

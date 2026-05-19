@@ -137,6 +137,30 @@ export async function importCSV(csvText: string): Promise<{
   return data;
 }
 
+// Full Backup (JSON with images + voice)
+export async function exportBackup(): Promise<void> {
+  const response = await api.get('/transactions/backup', { responseType: 'blob' });
+  const blob = new Blob([response.data], { type: 'application/json;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const today = new Date().toISOString().split('T')[0];
+  a.href = url;
+  a.download = `tainan_backup_${today}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function restoreBackup(json: any): Promise<{
+  message: string;
+  imported: number;
+  catsCreated: number;
+  logsImported: number;
+  skipped: number;
+}> {
+  const { data } = await api.post('/transactions/restore', json);
+  return data;
+}
+
 // Audit Logs
 export interface AuditLog {
   id: number;

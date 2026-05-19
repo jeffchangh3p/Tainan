@@ -356,4 +356,119 @@ function parseCSVLine(line: string): string[] {
   return fields;
 }
 
+// GET /api/transactions/backup — Full JSON backup (includes images, voice, logs)
+router.get('/backup', (_req: Request, res: Response): void => {
+  try {
+    const transactions = dbAll(`
+      SELECT t.*, c.name as category_name, c.icon as category_icon
+      FROM transactions t
+      LEFT JOIN categories c ON t.category_id = c.id
+      ORDER BY t.date DESC
+    `);
+    const categories = dbAll('SELECT * FROM categories ORDER BY id');
+    const auditLog = dbAll('SELECT * FROM audit_log ORDER BY created_at DESC');
+
+    const backup = {
+      version: 1,
+      exported_at: new Date().toISOString(),
+      transactions,
+      categories,
+      audit_log: auditLog,
+    };
+
+    const today = new Date().toISOString().split('T')[0];
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="tainan_backup_${today}.json"`);
+    res.json(backup);
+
+    logAction('BACKUP_EXPORT', `${(transactions as any[]).length} transactions, ${(auditLog as any[]).length} logs`);
+  } catch (error) {
+    console.error('Error exporting backup:', error);
+    res.status(500).json({ error: 'Failed to export backup' });
+  }
+});
+
+// POST /api/transactions/restore — Restore from JSON backup
+router.post('/restore', (req: Request, res: Response): void => {
+  try {
+    const backup = req.body;
+    if (!backup || !backup.transactions || !Array.isArray(backup.transactions)) {
+      res.status(400).json({ error: 'Invalid backup format: must have transactions array' });
+      return;
+    }
+
+    // Get category lookup
+    const existingCats = dbAll('SELECT id, name, type FROM categories') as any[];
+    const catMap = new Map<string, number>();
+    for (const c of existingCats) catMap.set(c.name, c.id);
+
+    // Import categories first (if provided)
+    let catsCreated = 0;
+    if (backup.categories && Array.isArray(backup.categories)) {
+      for (const cat of backup.categories) {
+        if (!catMap.has(cat.name)) {
+          const result = dbRun(
+            'INSERT INTO categories (name, type, icon) VALUES (?, ?, ?)',
+            cat.name, cat.type, cat.icon || null
+          );
+          catMap.set(cat.name, Number(result.lastInsertRowid));
+          catsCreated++;
+        }
+      }
+    }
+
+    // Import transactions
+    let imported = 0;
+    let skipped = 0;
+    for (const tx of backup.transactions) {
+      try {
+        const amount = parseFloat(tx.amount);
+        if (!amount || amount <= 0 || !tx.date || !tx.type) { skipped++; continue; }
+        if (tx.type !== 'income' && tx.type !== 'expense') { skipped++; continue; }
+
+        // Resolve category by name or id
+        let categoryId = null;
+        if (tx.category_name && catMap.has(tx.category_name)) {
+          categoryId = catMap.get(tx.category_name);
+        } else if (tx.category_id) {
+          categoryId = tx.category_id;
+        }
+
+        dbRun(
+          `INSERT INTO transactions (amount, type, category_id, person, description, receipt_image, voice_memo, date)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          amount, tx.type, categoryId, tx.person || null, tx.description || null,
+          tx.receipt_image || null, tx.voice_memo || null, tx.date
+        );
+        imported++;
+      } catch { skipped++; }
+    }
+
+    // Import audit logs (if provided)
+    let logsImported = 0;
+    if (backup.audit_log && Array.isArray(backup.audit_log)) {
+      for (const log of backup.audit_log) {
+        try {
+          if (!log.action) continue;
+          if (log.created_at) {
+            dbRun('INSERT INTO audit_log (action, detail, created_at) VALUES (?, ?, ?)',
+              log.action, log.detail || null, log.created_at);
+          } else {
+            dbRun('INSERT INTO audit_log (action, detail) VALUES (?, ?)',
+              log.action, log.detail || null);
+          }
+          logsImported++;
+        } catch { /* skip */ }
+      }
+    }
+
+    const msg = `Restored ${imported} transactions, ${catsCreated} categories, ${logsImported} logs (skipped ${skipped})`;
+    logAction('BACKUP_RESTORE', msg);
+    res.json({ message: msg, imported, catsCreated, logsImported, skipped });
+  } catch (error) {
+    console.error('Error restoring backup:', error);
+    res.status(500).json({ error: 'Failed to restore backup' });
+  }
+});
+
 export default router;

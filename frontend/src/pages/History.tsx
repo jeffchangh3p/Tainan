@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getTransactions, getCategories, deleteTransaction, updateTransaction, exportCSV, importCSV, getLogs, exportLogs, importLogs } from '../services/api';
+import { getTransactions, getCategories, deleteTransaction, updateTransaction, exportCSV, importCSV, getLogs, exportLogs, importLogs, exportBackup, restoreBackup } from '../services/api';
 import type { AuditLog } from '../services/api';
 import TransactionCard from '../components/TransactionCard';
 import EditModal from '../components/EditModal';
@@ -15,6 +15,7 @@ export default function History() {
   const [showLogs, setShowLogs] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logFileInputRef = useRef<HTMLInputElement>(null);
+  const backupFileInputRef = useRef<HTMLInputElement>(null);
 
   // Filters
   const [filters, setFilters] = useState({
@@ -150,6 +151,15 @@ export default function History() {
           <button className="btn btn-secondary" onClick={() => fileInputRef.current?.click()}>
             📤 Import 匯入
           </button>
+          <button className="btn btn-secondary" onClick={async () => {
+            try { await exportBackup(); showToast('📦 Full backup exported (includes images & voice)', 'success'); }
+            catch { showToast('❌ Backup failed', 'error'); }
+          }}>
+            📦 Full Backup
+          </button>
+          <button className="btn btn-secondary" onClick={() => backupFileInputRef.current?.click()}>
+            🔄 Restore
+          </button>
           <button
             className={`btn ${showLogs ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => { setShowLogs(!showLogs); if (!showLogs) fetchLogs(); }}
@@ -162,6 +172,24 @@ export default function History() {
             accept=".csv"
             onChange={handleImport}
             style={{ display: 'none' }}
+          />
+          <input
+            ref={backupFileInputRef}
+            type="file"
+            accept=".json"
+            style={{ display: 'none' }}
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              try {
+                const text = await file.text();
+                const json = JSON.parse(text);
+                const result = await restoreBackup(json);
+                showToast(`🔄 ${result.message}`, 'success');
+                fetchData();
+              } catch { showToast('❌ Restore failed', 'error'); }
+              if (backupFileInputRef.current) backupFileInputRef.current.value = '';
+            }}
           />
         </div>
       </div>

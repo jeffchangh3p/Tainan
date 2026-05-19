@@ -338,5 +338,115 @@ function parseCSVLine(line) {
     fields.push(current);
     return fields;
 }
+// GET /api/transactions/backup — Full JSON backup (includes images, voice, logs)
+router.get('/backup', (_req, res) => {
+    try {
+        const transactions = (0, database_1.dbAll)(`
+      SELECT t.*, c.name as category_name, c.icon as category_icon
+      FROM transactions t
+      LEFT JOIN categories c ON t.category_id = c.id
+      ORDER BY t.date DESC
+    `);
+        const categories = (0, database_1.dbAll)('SELECT * FROM categories ORDER BY id');
+        const auditLog = (0, database_1.dbAll)('SELECT * FROM audit_log ORDER BY created_at DESC');
+        const backup = {
+            version: 1,
+            exported_at: new Date().toISOString(),
+            transactions,
+            categories,
+            audit_log: auditLog,
+        };
+        const today = new Date().toISOString().split('T')[0];
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="tainan_backup_${today}.json"`);
+        res.json(backup);
+        logAction('BACKUP_EXPORT', `${transactions.length} transactions, ${auditLog.length} logs`);
+    }
+    catch (error) {
+        console.error('Error exporting backup:', error);
+        res.status(500).json({ error: 'Failed to export backup' });
+    }
+});
+// POST /api/transactions/restore — Restore from JSON backup
+router.post('/restore', (req, res) => {
+    try {
+        const backup = req.body;
+        if (!backup || !backup.transactions || !Array.isArray(backup.transactions)) {
+            res.status(400).json({ error: 'Invalid backup format: must have transactions array' });
+            return;
+        }
+        // Get category lookup
+        const existingCats = (0, database_1.dbAll)('SELECT id, name, type FROM categories');
+        const catMap = new Map();
+        for (const c of existingCats)
+            catMap.set(c.name, c.id);
+        // Import categories first (if provided)
+        let catsCreated = 0;
+        if (backup.categories && Array.isArray(backup.categories)) {
+            for (const cat of backup.categories) {
+                if (!catMap.has(cat.name)) {
+                    const result = (0, database_1.dbRun)('INSERT INTO categories (name, type, icon) VALUES (?, ?, ?)', cat.name, cat.type, cat.icon || null);
+                    catMap.set(cat.name, Number(result.lastInsertRowid));
+                    catsCreated++;
+                }
+            }
+        }
+        // Import transactions
+        let imported = 0;
+        let skipped = 0;
+        for (const tx of backup.transactions) {
+            try {
+                const amount = parseFloat(tx.amount);
+                if (!amount || amount <= 0 || !tx.date || !tx.type) {
+                    skipped++;
+                    continue;
+                }
+                if (tx.type !== 'income' && tx.type !== 'expense') {
+                    skipped++;
+                    continue;
+                }
+                // Resolve category by name or id
+                let categoryId = null;
+                if (tx.category_name && catMap.has(tx.category_name)) {
+                    categoryId = catMap.get(tx.category_name);
+                }
+                else if (tx.category_id) {
+                    categoryId = tx.category_id;
+                }
+                (0, database_1.dbRun)(`INSERT INTO transactions (amount, type, category_id, person, description, receipt_image, voice_memo, date)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, amount, tx.type, categoryId, tx.person || null, tx.description || null, tx.receipt_image || null, tx.voice_memo || null, tx.date);
+                imported++;
+            }
+            catch {
+                skipped++;
+            }
+        }
+        // Import audit logs (if provided)
+        let logsImported = 0;
+        if (backup.audit_log && Array.isArray(backup.audit_log)) {
+            for (const log of backup.audit_log) {
+                try {
+                    if (!log.action)
+                        continue;
+                    if (log.created_at) {
+                        (0, database_1.dbRun)('INSERT INTO audit_log (action, detail, created_at) VALUES (?, ?, ?)', log.action, log.detail || null, log.created_at);
+                    }
+                    else {
+                        (0, database_1.dbRun)('INSERT INTO audit_log (action, detail) VALUES (?, ?)', log.action, log.detail || null);
+                    }
+                    logsImported++;
+                }
+                catch { /* skip */ }
+            }
+        }
+        const msg = `Restored ${imported} transactions, ${catsCreated} categories, ${logsImported} logs (skipped ${skipped})`;
+        logAction('BACKUP_RESTORE', msg);
+        res.json({ message: msg, imported, catsCreated, logsImported, skipped });
+    }
+    catch (error) {
+        console.error('Error restoring backup:', error);
+        res.status(500).json({ error: 'Failed to restore backup' });
+    }
+});
 exports.default = router;
 //# sourceMappingURL=transactions.js.map
