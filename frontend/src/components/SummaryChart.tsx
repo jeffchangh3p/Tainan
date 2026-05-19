@@ -37,7 +37,7 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
             border: '1px solid rgba(255,255,255,0.1)',
             borderRadius: '8px',
           }}
-          formatter={(value: number) => [`$${value.toLocaleString()}`, undefined]}
+          formatter={(value: any) => [`$${Number(value).toLocaleString()}`, undefined]}
         />
         <Bar dataKey="收入" fill="#34d399" radius={[4, 4, 0, 0]} />
         <Bar dataKey="支出" fill="#f87171" radius={[4, 4, 0, 0]} />
@@ -87,7 +87,7 @@ export function CategoryChart({ data }: CategoryChartProps) {
             borderRadius: '8px',
             fontSize: '0.85rem',
           }}
-          formatter={(value: number) => [`$${value.toLocaleString()}`, undefined]}
+          formatter={(value: any) => [`$${Number(value).toLocaleString()}`, undefined]}
         />
         <Legend
           wrapperStyle={{ fontSize: '0.8rem', color: '#9a9aaf' }}
