@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getOverview, getMonthlySummary, getCategorySummary, getTransactions } from '../services/api';
+import { getOverview, getMonthlySummary, getCategorySummary, getTransactions, getPersonSummary } from '../services/api';
+import type { PersonSummary } from '../services/api';
 import { MonthlyChart, CategoryChart } from '../components/SummaryChart';
 import TransactionCard from '../components/TransactionCard';
 import type { OverviewSummary, MonthlySummary, CategorySummary, Transaction } from '../types';
@@ -19,21 +20,24 @@ export default function Dashboard() {
   const [monthly, setMonthly] = useState<MonthlySummary[]>([]);
   const [categoryData, setCategoryData] = useState<CategorySummary[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [personData, setPersonData] = useState<PersonSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [ov, mon, cat, recent] = await Promise.all([
+        const [ov, mon, cat, recent, persons] = await Promise.all([
           getOverview(),
           getMonthlySummary(6),
           getCategorySummary({ type: 'expense' }),
           getTransactions({ limit: 5 }),
+          getPersonSummary(),
         ]);
         setOverview(ov);
         setMonthly(mon);
         setCategoryData(cat);
         setRecentTransactions(recent.data);
+        setPersonData(persons);
       } catch (err) {
         console.error('Error loading dashboard:', err);
       } finally {
@@ -122,6 +126,39 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Person Subtotals */}
+      {personData.length > 0 && (
+        <div className="card">
+          <div className="card-header">
+            <h2 className="card-title">👥 Per Person Subtotal 人員小計</h2>
+          </div>
+          <div className="person-grid">
+            {personData.map(p => (
+              <div key={p.person} className="person-card">
+                <div className="person-name">{p.person}</div>
+                <div className="person-stats">
+                  <div className="person-stat">
+                    <span className="person-stat-label">収入 Income</span>
+                    <span className="person-stat-value income">+{formatCurrency(p.total_income)}</span>
+                  </div>
+                  <div className="person-stat">
+                    <span className="person-stat-label">支出 Expense</span>
+                    <span className="person-stat-value expense">-{formatCurrency(p.total_expense)}</span>
+                  </div>
+                  <div className="person-stat">
+                    <span className="person-stat-label">結餘 Net</span>
+                    <span className={`person-stat-value ${p.net >= 0 ? 'income' : 'expense'}`}>
+                      {formatCurrency(p.net)}
+                    </span>
+                  </div>
+                </div>
+                <div className="person-count">{p.count} records</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recent Transactions */}
       <div className="card">

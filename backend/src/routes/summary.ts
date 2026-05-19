@@ -105,4 +105,38 @@ router.get('/overview', (_req: Request, res: Response): void => {
   }
 });
 
+// GET /api/summary/person — Subtotal per person
+router.get('/person', (req: Request, res: Response): void => {
+  try {
+    let query = `
+      SELECT
+        COALESCE(person, '(unassigned)') as person,
+        SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as total_income,
+        SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as total_expense,
+        SUM(CASE WHEN type = 'income' THEN amount ELSE -amount END) as net,
+        COUNT(*) as count
+      FROM transactions
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+
+    if (req.query.startDate) {
+      query += ' AND date >= ?';
+      params.push(req.query.startDate);
+    }
+    if (req.query.endDate) {
+      query += ' AND date <= ?';
+      params.push(req.query.endDate);
+    }
+
+    query += ' GROUP BY person ORDER BY total_expense DESC';
+
+    const summary = dbAll(query, ...params);
+    res.json(summary);
+  } catch (error) {
+    console.error('Error fetching person summary:', error);
+    res.status(500).json({ error: 'Failed to fetch person summary' });
+  }
+});
+
 export default router;

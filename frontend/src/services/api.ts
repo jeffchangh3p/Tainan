@@ -97,6 +97,23 @@ export async function getOverview(): Promise<OverviewSummary> {
   return data;
 }
 
+// Person summary
+export interface PersonSummary {
+  person: string;
+  total_income: number;
+  total_expense: number;
+  net: number;
+  count: number;
+}
+
+export async function getPersonSummary(params?: {
+  startDate?: string;
+  endDate?: string;
+}): Promise<PersonSummary[]> {
+  const { data } = await api.get('/summary/person', { params });
+  return data;
+}
+
 // Export / Import
 export async function exportCSV(): Promise<void> {
   const response = await api.get('/transactions/export', { responseType: 'blob' });

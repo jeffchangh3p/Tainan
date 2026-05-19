@@ -1311,3 +1311,85 @@ a:hover {
   border-color: rgba(239, 68, 68, 0.4) !important;
   animation: voice-pulse 1s ease-in-out infinite;
 }
+
+/* ==============================
+   Person Subtotal Cards
+   ============================== */
+.person-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.person-card {
+  background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  transition: all var(--transition-fast);
+}
+
+.person-card:hover {
+  border-color: var(--accent-gold);
+  box-shadow: var(--shadow-glow);
+  transform: translateY(-2px);
+}
+
+.person-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent-gold);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.person-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.person-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.person-stat-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.person-stat-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem;
+}
+
+.person-stat-value.income {
+  color: var(--income-color);
+}
+
+.person-stat-value.expense {
+  color: var(--expense-color);
+}
+
+.person-count {
+  margin-top: 10px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  .person-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .person-grid {
+    grid-template-columns: 1fr;
+  }
+}
