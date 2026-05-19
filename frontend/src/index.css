@@ -900,6 +900,10 @@ a:hover {
     gap: 12px;
   }
 
+  .transaction-actions {
+    opacity: 1;
+  }
+
   .filters-bar {
     flex-direction: column;
   }

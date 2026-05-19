@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getTransactions, getCategories, deleteTransaction } from '../services/api';
+import { getTransactions, getCategories, deleteTransaction, updateTransaction } from '../services/api';
 import TransactionCard from '../components/TransactionCard';
+import EditModal from '../components/EditModal';
 import type { Transaction, Category, PaginatedResponse } from '../types';
 
 export default function History() {
@@ -8,6 +9,7 @@ export default function History() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
 
   // Filters
   const [filters, setFilters] = useState({
@@ -52,14 +54,32 @@ export default function History() {
   }
 
   async function handleDelete(id: number) {
-    if (!window.confirm('Are you sure you want to delete this record?')) return;
+    if (!window.confirm('確定刪除此紀錄？ Are you sure you want to delete this record?')) return;
     try {
       await deleteTransaction(id);
-      showToast('🗑️ Record deleted', 'success');
+      showToast('🗑️ Record deleted 紀錄已刪除', 'success');
       fetchData();
     } catch (err) {
       console.error('Error deleting:', err);
       showToast('❌ Failed to delete', 'error');
+    }
+  }
+
+  async function handleSaveEdit(id: number, data: {
+    amount: number;
+    type: 'income' | 'expense';
+    category_id: number | null;
+    description: string | null;
+    date: string;
+  }) {
+    try {
+      await updateTransaction(id, data);
+      showToast('✅ Record updated 紀錄已更新', 'success');
+      setEditingTx(null);
+      fetchData();
+    } catch (err) {
+      console.error('Error updating:', err);
+      showToast('❌ Failed to update', 'error');
     }
   }
 
@@ -152,7 +172,12 @@ export default function History() {
         <>
           <div className="transaction-list">
             {transactions.map(tx => (
-              <TransactionCard key={tx.id} transaction={tx} onDelete={handleDelete} />
+              <TransactionCard
+                key={tx.id}
+                transaction={tx}
+                onDelete={handleDelete}
+                onEdit={setEditingTx}
+              />
             ))}
           </div>
 
@@ -193,6 +218,16 @@ export default function History() {
         </div>
       )}
 
+      {/* Edit Modal */}
+      {editingTx && (
+        <EditModal
+          transaction={editingTx}
+          categories={categories}
+          onSave={handleSaveEdit}
+          onClose={() => setEditingTx(null)}
+        />
+      )}
+
       {toast && (
         <div className={`toast ${toast.type}`}>
           {toast.message}
@@ -201,3 +236,4 @@ export default function History() {
     </div>
   );
 }
+

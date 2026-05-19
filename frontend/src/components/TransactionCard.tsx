@@ -3,6 +3,7 @@ import type { Transaction } from '../types';
 interface Props {
   transaction: Transaction;
   onDelete?: (id: number) => void;
+  onEdit?: (transaction: Transaction) => void;
 }
 
 function formatCurrency(amount: number): string {
@@ -22,7 +23,7 @@ function formatDate(dateStr: string): string {
   });
 }
 
-export default function TransactionCard({ transaction, onDelete }: Props) {
+export default function TransactionCard({ transaction, onDelete, onEdit }: Props) {
   const isIncome = transaction.type === 'income';
 
   return (
@@ -44,17 +45,29 @@ export default function TransactionCard({ transaction, onDelete }: Props) {
         </div>
         <div className="transaction-date">{formatDate(transaction.date)}</div>
       </div>
-      {onDelete && (
+      {(onEdit || onDelete) && (
         <div className="transaction-actions">
-          <button
-            className="btn btn-danger btn-icon"
-            onClick={() => onDelete(transaction.id)}
-            title="Delete"
-          >
-            🗑️
-          </button>
+          {onEdit && (
+            <button
+              className="btn btn-secondary btn-icon"
+              onClick={() => onEdit(transaction)}
+              title="Edit"
+            >
+              ✏️
+            </button>
+          )}
+          {onDelete && (
+            <button
+              className="btn btn-danger btn-icon"
+              onClick={() => onDelete(transaction.id)}
+              title="Delete"
+            >
+              🗑️
+            </button>
+          )}
         </div>
       )}
     </div>
   );
 }
+
