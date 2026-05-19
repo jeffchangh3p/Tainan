@@ -980,6 +980,8 @@ a:hover {
   padding: 32px;
   width: 90%;
   max-width: 500px;
+  max-height: 85vh;
+  overflow-y: auto;
   box-shadow: var(--shadow-lg);
 }
 
