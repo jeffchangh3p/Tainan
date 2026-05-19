@@ -4,6 +4,7 @@ import { createTransaction, getCategories, createCategory } from '../services/ap
 import type { Category, TransactionFormData } from '../types';
 import { FAMILY_MEMBERS } from '../types';
 import ReceiptUpload from '../components/ReceiptUpload';
+import VoiceMemo from '../components/VoiceMemo';
 
 function getTodayDate(): string {
   const d = new Date();
@@ -16,6 +17,7 @@ export default function AddTransaction() {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
+  const [voiceMemo, setVoiceMemo] = useState<string | null>(null);
   const [customCategory, setCustomCategory] = useState('');
 
   const [form, setForm] = useState<TransactionFormData>({
@@ -74,6 +76,7 @@ export default function AddTransaction() {
         person: form.person || null,
         description: form.description || null,
         receipt_image: receiptImage,
+        voice_memo: voiceMemo,
         date: form.date,
       });
 
@@ -89,6 +92,7 @@ export default function AddTransaction() {
         date: getTodayDate(),
       });
       setReceiptImage(null);
+      setVoiceMemo(null);
       setCustomCategory('');
 
       // Navigate after short delay
@@ -239,6 +243,12 @@ export default function AddTransaction() {
           <div className="form-group">
             <label className="form-label">Receipt 收據</label>
             <ReceiptUpload image={receiptImage} onChange={setReceiptImage} />
+          </div>
+
+          {/* Voice Memo */}
+          <div className="form-group">
+            <label className="form-label">Voice Memo 錄音備忘</label>
+            <VoiceMemo audio={voiceMemo} onChange={setVoiceMemo} />
           </div>
 
           {/* Submit */}

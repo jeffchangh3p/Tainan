@@ -8,6 +8,7 @@ export const createTransactionSchema = z.object({
   person: z.string().max(50).nullable().optional(),
   description: z.string().max(500).nullable().optional(),
   receipt_image: z.string().max(700000).nullable().optional(),
+  voice_memo: z.string().max(700000).nullable().optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD format'),
 });
 

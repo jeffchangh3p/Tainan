@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import type { Transaction } from '../types';
 
 interface Props {
@@ -27,6 +27,23 @@ function formatDate(dateStr: string): string {
 export default function TransactionCard({ transaction, onDelete, onEdit }: Props) {
   const isIncome = transaction.type === 'income';
   const [showReceipt, setShowReceipt] = useState(false);
+  const [playingVoice, setPlayingVoice] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  function toggleVoice() {
+    if (!transaction.voice_memo) return;
+    if (playingVoice && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setPlayingVoice(false);
+    } else {
+      const a = new Audio(transaction.voice_memo);
+      audioRef.current = a;
+      a.onended = () => setPlayingVoice(false);
+      a.play();
+      setPlayingVoice(true);
+    }
+  }
 
   return (
     <>
@@ -47,6 +64,15 @@ export default function TransactionCard({ transaction, onDelete, onEdit }: Props
                 title="View receipt 查看收據"
               >
                 📷
+              </button>
+            )}
+            {transaction.voice_memo && (
+              <button
+                className={`receipt-badge ${playingVoice ? 'voice-active' : ''}`}
+                onClick={toggleVoice}
+                title="Play voice memo 播放錄音"
+              >
+                {playingVoice ? '⏸' : '🎤'}
               </button>
             )}
           </div>

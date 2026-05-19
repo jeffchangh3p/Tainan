@@ -7,6 +7,7 @@ export declare const createTransactionSchema: z.ZodObject<{
     person: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     receipt_image: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    voice_memo: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     date: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     type: "income" | "expense";
@@ -16,6 +17,7 @@ export declare const createTransactionSchema: z.ZodObject<{
     person?: string | null | undefined;
     description?: string | null | undefined;
     receipt_image?: string | null | undefined;
+    voice_memo?: string | null | undefined;
 }, {
     type: "income" | "expense";
     amount: number;
@@ -24,6 +26,7 @@ export declare const createTransactionSchema: z.ZodObject<{
     person?: string | null | undefined;
     description?: string | null | undefined;
     receipt_image?: string | null | undefined;
+    voice_memo?: string | null | undefined;
 }>;
 export declare const updateTransactionSchema: z.ZodObject<{
     amount: z.ZodOptional<z.ZodNumber>;
@@ -32,6 +35,7 @@ export declare const updateTransactionSchema: z.ZodObject<{
     person: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
     description: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
     receipt_image: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
+    voice_memo: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
     date: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     type?: "income" | "expense" | undefined;
@@ -41,6 +45,7 @@ export declare const updateTransactionSchema: z.ZodObject<{
     person?: string | null | undefined;
     description?: string | null | undefined;
     receipt_image?: string | null | undefined;
+    voice_memo?: string | null | undefined;
 }, {
     type?: "income" | "expense" | undefined;
     amount?: number | undefined;
@@ -49,6 +54,7 @@ export declare const updateTransactionSchema: z.ZodObject<{
     person?: string | null | undefined;
     description?: string | null | undefined;
     receipt_image?: string | null | undefined;
+    voice_memo?: string | null | undefined;
 }>;
 export declare const createCategorySchema: z.ZodObject<{
     name: z.ZodString;

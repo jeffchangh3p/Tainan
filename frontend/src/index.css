@@ -1180,3 +1180,134 @@ a:hover {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
 }
+
+/* ==============================
+   Voice Memo
+   ============================== */
+.voice-memo {
+  width: 100%;
+}
+
+.voice-record-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 16px;
+  background: var(--bg-input);
+  border: 2px dashed var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.voice-record-btn:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.voice-record-icon {
+  font-size: 1.5rem;
+}
+
+.voice-recording {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: var(--radius-md);
+}
+
+.voice-recording-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: voice-pulse 1s ease-in-out infinite;
+}
+
+@keyframes voice-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.voice-recording-time {
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #ef4444;
+  min-width: 3em;
+}
+
+.voice-playback {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+}
+
+.voice-play-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-primary);
+  border: none;
+  border-radius: 50%;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.voice-play-btn:hover {
+  transform: scale(1.1);
+  box-shadow: var(--shadow-glow);
+}
+
+.voice-waveform {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+  min-width: 80px;
+}
+
+.voice-bar {
+  width: 4px;
+  background: var(--border-subtle);
+  border-radius: 2px;
+  transition: background 0.2s;
+}
+
+.voice-bar.active {
+  background: var(--accent-primary);
+  animation: voice-wave 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes voice-wave {
+  0% { transform: scaleY(0.6); }
+  100% { transform: scaleY(1.4); }
+}
+
+.voice-memo-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.voice-active {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  animation: voice-pulse 1s ease-in-out infinite;
+}

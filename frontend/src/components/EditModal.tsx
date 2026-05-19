@@ -3,6 +3,7 @@ import type { Transaction, Category } from '../types';
 import { FAMILY_MEMBERS } from '../types';
 import { createCategory, getCategories } from '../services/api';
 import ReceiptUpload from './ReceiptUpload';
+import VoiceMemo from './VoiceMemo';
 
 interface Props {
   transaction: Transaction;
@@ -14,6 +15,7 @@ interface Props {
     person: string | null;
     description: string | null;
     receipt_image: string | null;
+    voice_memo: string | null;
     date: string;
   }) => Promise<void>;
   onClose: () => void;
@@ -29,6 +31,7 @@ export default function EditModal({ transaction, categories, onSave, onClose }: 
     date: transaction.date,
   });
   const [receiptImage, setReceiptImage] = useState<string | null>(transaction.receipt_image || null);
+  const [voiceMemo, setVoiceMemo] = useState<string | null>(transaction.voice_memo || null);
   const [saving, setSaving] = useState(false);
   const [customCategory, setCustomCategory] = useState('');
   const [localCategories, setLocalCategories] = useState(categories);
@@ -69,6 +72,7 @@ export default function EditModal({ transaction, categories, onSave, onClose }: 
         person: form.person || null,
         description: form.description || null,
         receipt_image: receiptImage,
+        voice_memo: voiceMemo,
         date: form.date,
       });
     } finally {
@@ -201,6 +205,12 @@ export default function EditModal({ transaction, categories, onSave, onClose }: 
           <div className="form-group">
             <label className="form-label">Receipt 收據</label>
             <ReceiptUpload image={receiptImage} onChange={setReceiptImage} />
+          </div>
+
+          {/* Voice Memo */}
+          <div className="form-group">
+            <label className="form-label">Voice Memo 錄音備忘</label>
+            <VoiceMemo audio={voiceMemo} onChange={setVoiceMemo} />
           </div>
 
           {/* Actions */}

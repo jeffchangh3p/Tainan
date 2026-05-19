@@ -16,6 +16,7 @@ export interface Transaction {
   person: string | null;
   description: string | null;
   receipt_image: string | null;
+  voice_memo: string | null;
   date: string;
   created_at: string;
   updated_at: string;

@@ -76,6 +76,7 @@ export default function History() {
     person: string | null;
     description: string | null;
     receipt_image: string | null;
+    voice_memo: string | null;
     date: string;
   }) {
     try {

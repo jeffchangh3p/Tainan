@@ -98,8 +98,8 @@ router.get('/', (req, res) => {
 // POST /api/transactions — Create
 router.post('/', (0, validation_1.validate)(validation_1.createTransactionSchema), (req, res) => {
     try {
-        const { amount, type, category_id, person, description, receipt_image, date } = req.body;
-        const result = (0, database_1.dbRun)(`INSERT INTO transactions (amount, type, category_id, person, description, receipt_image, date) VALUES (?, ?, ?, ?, ?, ?, ?)`, amount, type, category_id || null, person || null, description || null, receipt_image || null, date);
+        const { amount, type, category_id, person, description, receipt_image, voice_memo, date } = req.body;
+        const result = (0, database_1.dbRun)(`INSERT INTO transactions (amount, type, category_id, person, description, receipt_image, voice_memo, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, amount, type, category_id || null, person || null, description || null, receipt_image || null, voice_memo || null, date);
         const transaction = (0, database_1.dbGet)(`SELECT t.*, c.name as category_name, c.icon as category_icon
        FROM transactions t LEFT JOIN categories c ON t.category_id = c.id
        WHERE t.id = ?`, result.lastInsertRowid);
@@ -146,6 +146,10 @@ router.put('/:id', (0, validation_1.validate)(validation_1.updateTransactionSche
         if (fields.receipt_image !== undefined) {
             updates.push('receipt_image = ?');
             values.push(fields.receipt_image);
+        }
+        if (fields.voice_memo !== undefined) {
+            updates.push('voice_memo = ?');
+            values.push(fields.voice_memo);
         }
         if (fields.date !== undefined) {
             updates.push('date = ?');

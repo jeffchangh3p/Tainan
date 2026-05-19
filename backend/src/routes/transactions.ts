@@ -105,10 +105,10 @@ router.get('/', (req: Request, res: Response): void => {
 // POST /api/transactions — Create
 router.post('/', validate(createTransactionSchema), (req: Request, res: Response): void => {
   try {
-    const { amount, type, category_id, person, description, receipt_image, date } = req.body;
+    const { amount, type, category_id, person, description, receipt_image, voice_memo, date } = req.body;
     const result = dbRun(
-      `INSERT INTO transactions (amount, type, category_id, person, description, receipt_image, date) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      amount, type, category_id || null, person || null, description || null, receipt_image || null, date
+      `INSERT INTO transactions (amount, type, category_id, person, description, receipt_image, voice_memo, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      amount, type, category_id || null, person || null, description || null, receipt_image || null, voice_memo || null, date
     );
 
     const transaction = dbGet(
@@ -147,6 +147,7 @@ router.put('/:id', validate(updateTransactionSchema), (req: Request, res: Respon
     if (fields.person !== undefined) { updates.push('person = ?'); values.push(fields.person); }
     if (fields.description !== undefined) { updates.push('description = ?'); values.push(fields.description); }
     if (fields.receipt_image !== undefined) { updates.push('receipt_image = ?'); values.push(fields.receipt_image); }
+    if (fields.voice_memo !== undefined) { updates.push('voice_memo = ?'); values.push(fields.voice_memo); }
     if (fields.date !== undefined) { updates.push('date = ?'); values.push(fields.date); }
 
     if (updates.length === 0) {
