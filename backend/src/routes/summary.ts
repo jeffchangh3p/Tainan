@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import db from '../db/database';
+import { dbAll, dbGet } from '../db/database';
 
 const router = Router();
 
@@ -8,7 +8,7 @@ router.get('/monthly', (req: Request, res: Response): void => {
   try {
     const months = Number(req.query.months) || 12;
 
-    const summary = db.prepare(`
+    const summary = dbAll(`
       SELECT
         strftime('%Y-%m', date) as month,
         SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as total_income,
@@ -18,7 +18,7 @@ router.get('/monthly', (req: Request, res: Response): void => {
       WHERE date >= date('now', '-' || ? || ' months')
       GROUP BY strftime('%Y-%m', date)
       ORDER BY month ASC
-    `).all(months);
+    `, months);
 
     res.json(summary);
   } catch (error) {
@@ -59,7 +59,7 @@ router.get('/category', (req: Request, res: Response): void => {
 
     query += ' GROUP BY c.id, t.type ORDER BY total DESC';
 
-    const summary = db.prepare(query).all(...params);
+    const summary = dbAll(query, ...params);
     res.json(summary);
   } catch (error) {
     console.error('Error fetching category summary:', error);
@@ -70,21 +70,21 @@ router.get('/category', (req: Request, res: Response): void => {
 // GET /api/summary/overview — Quick overview stats
 router.get('/overview', (_req: Request, res: Response): void => {
   try {
-    const currentMonth = db.prepare(`
+    const currentMonth = dbGet(`
       SELECT
         SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as month_income,
         SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as month_expense
       FROM transactions
       WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')
-    `).get() as any;
+    `);
 
-    const allTime = db.prepare(`
+    const allTime = dbGet(`
       SELECT
         SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as total_income,
         SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as total_expense,
         COUNT(*) as total_transactions
       FROM transactions
-    `).get() as any;
+    `);
 
     res.json({
       currentMonth: {

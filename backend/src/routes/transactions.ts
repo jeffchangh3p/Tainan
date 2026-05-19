@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import db from '../db/database';
+import { dbAll, dbGet, dbRun } from '../db/database';
 import { validate, createTransactionSchema, updateTransactionSchema } from '../middleware/validation';
 
 const router = Router();
@@ -45,7 +45,7 @@ router.get('/', (req: Request, res: Response): void => {
     query += ' LIMIT ? OFFSET ?';
     params.push(limit, offset);
 
-    const transactions = db.prepare(query).all(...params);
+    const transactions = dbAll(query, ...params);
 
     // Get total count for pagination
     let countQuery = `SELECT COUNT(*) as total FROM transactions t WHERE 1=1`;
@@ -71,7 +71,8 @@ router.get('/', (req: Request, res: Response): void => {
       countParams.push(`%${req.query.search}%`);
     }
 
-    const { total } = db.prepare(countQuery).get(...countParams) as { total: number };
+    const countResult = dbGet(countQuery, ...countParams);
+    const total = countResult?.total || 0;
 
     res.json({
       data: transactions,
@@ -92,17 +93,17 @@ router.get('/', (req: Request, res: Response): void => {
 router.post('/', validate(createTransactionSchema), (req: Request, res: Response): void => {
   try {
     const { amount, type, category_id, description, date } = req.body;
-    const result = db.prepare(`
-      INSERT INTO transactions (amount, type, category_id, description, date)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(amount, type, category_id || null, description || null, date);
+    const result = dbRun(
+      `INSERT INTO transactions (amount, type, category_id, description, date) VALUES (?, ?, ?, ?, ?)`,
+      amount, type, category_id || null, description || null, date
+    );
 
-    const transaction = db.prepare(`
-      SELECT t.*, c.name as category_name, c.icon as category_icon
-      FROM transactions t
-      LEFT JOIN categories c ON t.category_id = c.id
-      WHERE t.id = ?
-    `).get(result.lastInsertRowid);
+    const transaction = dbGet(
+      `SELECT t.*, c.name as category_name, c.icon as category_icon
+       FROM transactions t LEFT JOIN categories c ON t.category_id = c.id
+       WHERE t.id = ?`,
+      result.lastInsertRowid
+    );
 
     res.status(201).json(transaction);
   } catch (error) {
@@ -115,7 +116,7 @@ router.post('/', validate(createTransactionSchema), (req: Request, res: Response
 router.put('/:id', validate(updateTransactionSchema), (req: Request, res: Response): void => {
   try {
     const { id } = req.params;
-    const existing = db.prepare('SELECT * FROM transactions WHERE id = ?').get(Number(id));
+    const existing = dbGet('SELECT * FROM transactions WHERE id = ?', Number(id));
     if (!existing) {
       res.status(404).json({ error: 'Transaction not found' });
       return;
@@ -139,14 +140,14 @@ router.put('/:id', validate(updateTransactionSchema), (req: Request, res: Respon
     updates.push("updated_at = datetime('now')");
     values.push(Number(id));
 
-    db.prepare(`UPDATE transactions SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+    dbRun(`UPDATE transactions SET ${updates.join(', ')} WHERE id = ?`, ...values);
 
-    const updated = db.prepare(`
-      SELECT t.*, c.name as category_name, c.icon as category_icon
-      FROM transactions t
-      LEFT JOIN categories c ON t.category_id = c.id
-      WHERE t.id = ?
-    `).get(Number(id));
+    const updated = dbGet(
+      `SELECT t.*, c.name as category_name, c.icon as category_icon
+       FROM transactions t LEFT JOIN categories c ON t.category_id = c.id
+       WHERE t.id = ?`,
+      Number(id)
+    );
 
     res.json(updated);
   } catch (error) {
@@ -159,7 +160,7 @@ router.put('/:id', validate(updateTransactionSchema), (req: Request, res: Respon
 router.delete('/:id', (req: Request, res: Response): void => {
   try {
     const { id } = req.params;
-    const result = db.prepare('DELETE FROM transactions WHERE id = ?').run(Number(id));
+    const result = dbRun('DELETE FROM transactions WHERE id = ?', Number(id));
     if (result.changes === 0) {
       res.status(404).json({ error: 'Transaction not found' });
       return;

@@ -1,4 +1,4 @@
-import Database, { type Database as DatabaseType } from 'better-sqlite3';
+import initSqlJs, { type Database as SqlJsDatabase } from 'sql.js';
 import path from 'path';
 import fs from 'fs';
 
@@ -10,22 +10,53 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-const db: DatabaseType = new Database(DB_PATH);
+let db: SqlJsDatabase;
 
-// Enable WAL mode for better concurrent read performance
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+// Helper to persist database to disk
+function saveDatabase(): void {
+  if (db) {
+    const data = db.export();
+    const buffer = Buffer.from(data);
+    fs.writeFileSync(DB_PATH, buffer);
+  }
+}
 
-export function initializeDatabase(): void {
-  db.exec(`
+// Auto-save every 30 seconds
+setInterval(saveDatabase, 30000);
+
+// Save on process exit
+process.on('exit', saveDatabase);
+process.on('SIGINT', () => { saveDatabase(); process.exit(); });
+process.on('SIGTERM', () => { saveDatabase(); process.exit(); });
+
+export async function initializeDatabase(): Promise<void> {
+  const SQL = await initSqlJs();
+
+  // Load existing database or create new one
+  if (fs.existsSync(DB_PATH)) {
+    const fileBuffer = fs.readFileSync(DB_PATH);
+    db = new SQL.Database(fileBuffer);
+    console.log('📂 Loaded existing database');
+  } else {
+    db = new SQL.Database();
+    console.log('🆕 Created new database');
+  }
+
+  // Enable foreign keys
+  db.run('PRAGMA foreign_keys = ON');
+
+  // Create tables
+  db.run(`
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
       type TEXT NOT NULL CHECK(type IN ('income', 'expense')),
       icon TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
+    )
+  `);
 
+  db.run(`
     CREATE TABLE IF NOT EXISTS transactions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       amount REAL NOT NULL CHECK(amount > 0),
@@ -35,41 +66,72 @@ export function initializeDatabase(): void {
       date DATE NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
-    CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
-    CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id);
+    )
   `);
 
-  // Seed default categories if table is empty
-  const count = db.prepare('SELECT COUNT(*) as count FROM categories').get() as { count: number };
-  if (count.count === 0) {
-    const insert = db.prepare('INSERT INTO categories (name, type, icon) VALUES (?, ?, ?)');
-    const seedCategories = db.transaction(() => {
-      // Income categories
-      insert.run('薪資 Salary', 'income', '💰');
-      insert.run('退休金 Pension', 'income', '🏦');
-      insert.run('租金收入 Rental', 'income', '🏠');
-      insert.run('利息 Interest', 'income', '📈');
-      insert.run('紅包 Gift', 'income', '🧧');
-      insert.run('其他收入 Other Income', 'income', '💵');
+  db.run('CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id)');
 
-      // Expense categories
-      insert.run('餐飲 Food', 'expense', '🍜');
-      insert.run('醫療 Medical', 'expense', '🏥');
-      insert.run('水電瓦斯 Utilities', 'expense', '💡');
-      insert.run('交通 Transport', 'expense', '🚗');
-      insert.run('保險 Insurance', 'expense', '🛡️');
-      insert.run('日用品 Groceries', 'expense', '🛒');
-      insert.run('房屋修繕 Home Repair', 'expense', '🔧');
-      insert.run('娛樂 Entertainment', 'expense', '🎭');
-      insert.run('孝親費 Filial Piety', 'expense', '❤️');
-      insert.run('其他支出 Other Expense', 'expense', '📋');
-    });
-    seedCategories();
+  // Seed default categories if table is empty
+  const result = db.exec('SELECT COUNT(*) as count FROM categories');
+  const count = result[0]?.values[0]?.[0] as number;
+
+  if (count === 0) {
+    const categories = [
+      // Income
+      ['薪資 Salary', 'income', '💰'],
+      ['退休金 Pension', 'income', '🏦'],
+      ['租金收入 Rental', 'income', '🏠'],
+      ['利息 Interest', 'income', '📈'],
+      ['紅包 Gift', 'income', '🧧'],
+      ['其他收入 Other Income', 'income', '💵'],
+      // Expense
+      ['餐飲 Food', 'expense', '🍜'],
+      ['醫療 Medical', 'expense', '🏥'],
+      ['水電瓦斯 Utilities', 'expense', '💡'],
+      ['交通 Transport', 'expense', '🚗'],
+      ['保險 Insurance', 'expense', '🛡️'],
+      ['日用品 Groceries', 'expense', '🛒'],
+      ['房屋修繕 Home Repair', 'expense', '🔧'],
+      ['娛樂 Entertainment', 'expense', '🎭'],
+      ['孝親費 Filial Piety', 'expense', '❤️'],
+      ['其他支出 Other Expense', 'expense', '📋'],
+    ];
+
+    for (const [name, type, icon] of categories) {
+      db.run('INSERT INTO categories (name, type, icon) VALUES (?, ?, ?)', [name, type, icon]);
+    }
+    saveDatabase();
     console.log('✅ Seeded default categories');
   }
+
+  saveDatabase();
 }
 
-export default db;
+// Wrapper functions to match the better-sqlite3 API used by routes
+export function dbAll(sql: string, ...params: any[]): any[] {
+  const stmt = db.prepare(sql);
+  if (params.length > 0) stmt.bind(params);
+  const results: any[] = [];
+  while (stmt.step()) {
+    results.push(stmt.getAsObject());
+  }
+  stmt.free();
+  return results;
+}
+
+export function dbGet(sql: string, ...params: any[]): any | undefined {
+  const results = dbAll(sql, ...params);
+  return results[0];
+}
+
+export function dbRun(sql: string, ...params: any[]): { lastInsertRowid: number; changes: number } {
+  db.run(sql, params);
+  const lastId = (db.exec('SELECT last_insert_rowid() as id')[0]?.values[0]?.[0] as number) || 0;
+  const changes = db.getRowsModified();
+  saveDatabase();
+  return { lastInsertRowid: lastId, changes };
+}
+
+export default { dbAll, dbGet, dbRun };

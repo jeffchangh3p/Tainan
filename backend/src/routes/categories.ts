@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import db from '../db/database';
+import { dbAll, dbGet, dbRun } from '../db/database';
 import { validate, createCategorySchema } from '../middleware/validation';
 
 const router = Router();
@@ -7,7 +7,7 @@ const router = Router();
 // GET /api/categories — List all
 router.get('/', (_req: Request, res: Response): void => {
   try {
-    const categories = db.prepare('SELECT * FROM categories ORDER BY type, name').all();
+    const categories = dbAll('SELECT * FROM categories ORDER BY type, name');
     res.json(categories);
   } catch (error) {
     console.error('Error fetching categories:', error);
@@ -19,14 +19,15 @@ router.get('/', (_req: Request, res: Response): void => {
 router.post('/', validate(createCategorySchema), (req: Request, res: Response): void => {
   try {
     const { name, type, icon } = req.body;
-    const result = db.prepare(
-      'INSERT INTO categories (name, type, icon) VALUES (?, ?, ?)'
-    ).run(name, type, icon || null);
+    const result = dbRun(
+      'INSERT INTO categories (name, type, icon) VALUES (?, ?, ?)',
+      name, type, icon || null
+    );
 
-    const category = db.prepare('SELECT * FROM categories WHERE id = ?').get(result.lastInsertRowid);
+    const category = dbGet('SELECT * FROM categories WHERE id = ?', result.lastInsertRowid);
     res.status(201).json(category);
   } catch (error: any) {
-    if (error?.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+    if (error?.message?.includes('UNIQUE')) {
       res.status(409).json({ error: 'Category name already exists' });
       return;
     }
@@ -39,7 +40,7 @@ router.post('/', validate(createCategorySchema), (req: Request, res: Response): 
 router.delete('/:id', (req: Request, res: Response): void => {
   try {
     const { id } = req.params;
-    const result = db.prepare('DELETE FROM categories WHERE id = ?').run(Number(id));
+    const result = dbRun('DELETE FROM categories WHERE id = ?', Number(id));
     if (result.changes === 0) {
       res.status(404).json({ error: 'Category not found' });
       return;

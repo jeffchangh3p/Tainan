@@ -22,10 +22,6 @@ app.use((req, _res, next) => {
   next();
 });
 
-// Initialize database
-initializeDatabase();
-console.log('✅ Database initialized');
-
 // API Routes
 app.use('/api/transactions', transactionsRouter);
 app.use('/api/categories', categoriesRouter);
@@ -45,12 +41,22 @@ app.get('*', (_req, res) => {
   res.sendFile(path.join(frontendDist, 'index.html'));
 });
 
-// Start server
-app.listen(Number(PORT), '0.0.0.0', () => {
-  console.log(`\n🏛️  Tainan Financial Tracker`);
-  console.log(`   Running at http://localhost:${PORT}`);
-  console.log(`   API:  http://localhost:${PORT}/api/health`);
-  console.log(`   UI:   http://localhost:${PORT}\n`);
+// Initialize database (async) then start server
+async function start() {
+  await initializeDatabase();
+  console.log('✅ Database initialized');
+
+  app.listen(Number(PORT), '0.0.0.0', () => {
+    console.log(`\n🏛️  Tainan Financial Tracker`);
+    console.log(`   Running at http://localhost:${PORT}`);
+    console.log(`   API:  http://localhost:${PORT}/api/health`);
+    console.log(`   UI:   http://localhost:${PORT}\n`);
+  });
+}
+
+start().catch(err => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
 });
 
 export default app;
