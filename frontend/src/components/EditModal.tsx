@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Transaction, Category } from '../types';
 import { FAMILY_MEMBERS } from '../types';
+import { createCategory, getCategories } from '../services/api';
 import ReceiptUpload from './ReceiptUpload';
 
 interface Props {
@@ -29,8 +30,10 @@ export default function EditModal({ transaction, categories, onSave, onClose }: 
   });
   const [receiptImage, setReceiptImage] = useState<string | null>(transaction.receipt_image || null);
   const [saving, setSaving] = useState(false);
+  const [customCategory, setCustomCategory] = useState('');
+  const [localCategories, setLocalCategories] = useState(categories);
 
-  const filteredCategories = categories.filter(c => c.type === form.type);
+  const filteredCategories = localCategories.filter(c => c.type === form.type);
 
   // Close on Escape key
   useEffect(() => {
@@ -46,10 +49,23 @@ export default function EditModal({ transaction, categories, onSave, onClose }: 
 
     setSaving(true);
     try {
+      // If custom category, create it first
+      let categoryId = form.category_id;
+      if (categoryId === -1 && customCategory.trim()) {
+        const newCat = await createCategory({
+          name: customCategory.trim(),
+          type: form.type,
+          icon: form.type === 'income' ? '💵' : '📝',
+        });
+        categoryId = newCat.id;
+        const cats = await getCategories();
+        setLocalCategories(cats);
+      }
+
       await onSave(transaction.id, {
         amount,
         type: form.type,
-        category_id: form.category_id,
+        category_id: categoryId === -1 ? null : categoryId,
         person: form.person || null,
         description: form.description || null,
         receipt_image: receiptImage,
@@ -111,10 +127,14 @@ export default function EditModal({ transaction, categories, onSave, onClose }: 
               <select
                 className="form-select"
                 value={form.category_id ?? ''}
-                onChange={e => setForm(f => ({
-                  ...f,
-                  category_id: e.target.value ? Number(e.target.value) : null,
-                }))}
+                onChange={e => {
+                  const val = e.target.value;
+                  setForm(f => ({
+                    ...f,
+                    category_id: val === '' ? null : Number(val),
+                  }));
+                  if (val !== '-1') setCustomCategory('');
+                }}
               >
                 <option value="">— Select —</option>
                 {filteredCategories.map(cat => (
@@ -122,7 +142,19 @@ export default function EditModal({ transaction, categories, onSave, onClose }: 
                     {cat.icon} {cat.name}
                   </option>
                 ))}
+                <option value="-1">➕ New 新增...</option>
               </select>
+              {form.category_id === -1 && (
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Enter category name..."
+                  value={customCategory}
+                  onChange={e => setCustomCategory(e.target.value)}
+                  style={{ marginTop: '8px' }}
+                  autoFocus
+                />
+              )}
             </div>
 
             {/* Date */}

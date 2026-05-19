@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createTransaction, getCategories } from '../services/api';
+import { createTransaction, getCategories, createCategory } from '../services/api';
 import type { Category, TransactionFormData } from '../types';
 import { FAMILY_MEMBERS } from '../types';
 import ReceiptUpload from '../components/ReceiptUpload';
@@ -16,6 +16,7 @@ export default function AddTransaction() {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
+  const [customCategory, setCustomCategory] = useState('');
 
   const [form, setForm] = useState<TransactionFormData>({
     amount: '',
@@ -52,10 +53,24 @@ export default function AddTransaction() {
 
     setSubmitting(true);
     try {
+      // If custom category, create it first
+      let categoryId = form.category_id;
+      if (categoryId === -1 && customCategory.trim()) {
+        const newCat = await createCategory({
+          name: customCategory.trim(),
+          type: form.type,
+          icon: form.type === 'income' ? '💵' : '📝',
+        });
+        categoryId = newCat.id;
+        // Refresh categories
+        const cats = await getCategories();
+        setCategories(cats);
+      }
+
       await createTransaction({
         amount,
         type: form.type,
-        category_id: form.category_id,
+        category_id: categoryId === -1 ? null : categoryId,
         person: form.person || null,
         description: form.description || null,
         receipt_image: receiptImage,
@@ -74,6 +89,7 @@ export default function AddTransaction() {
         date: getTodayDate(),
       });
       setReceiptImage(null);
+      setCustomCategory('');
 
       // Navigate after short delay
       setTimeout(() => navigate('/'), 1000);
@@ -144,10 +160,14 @@ export default function AddTransaction() {
                 id="category"
                 className="form-select"
                 value={form.category_id ?? ''}
-                onChange={e => setForm(f => ({
-                  ...f,
-                  category_id: e.target.value ? Number(e.target.value) : null,
-                }))}
+                onChange={e => {
+                  const val = e.target.value;
+                  setForm(f => ({
+                    ...f,
+                    category_id: val === '' ? null : Number(val),
+                  }));
+                  if (val !== '-1') setCustomCategory('');
+                }}
               >
                 <option value="">— Select —</option>
                 {filteredCategories.map(cat => (
@@ -155,7 +175,19 @@ export default function AddTransaction() {
                     {cat.icon} {cat.name}
                   </option>
                 ))}
+                <option value="-1">➕ New 新增...</option>
               </select>
+              {form.category_id === -1 && (
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Enter category name..."
+                  value={customCategory}
+                  onChange={e => setCustomCategory(e.target.value)}
+                  style={{ marginTop: '8px' }}
+                  autoFocus
+                />
+              )}
             </div>
 
             {/* Date */}
