@@ -28,6 +28,7 @@ export default function TransactionCard({ transaction, onDelete, onEdit }: Props
   const isIncome = transaction.type === 'income';
   const [showReceipt, setShowReceipt] = useState(false);
   const [playingVoice, setPlayingVoice] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   function toggleVoice() {
@@ -77,7 +78,13 @@ export default function TransactionCard({ transaction, onDelete, onEdit }: Props
             )}
           </div>
           {transaction.description && (
-            <div className="transaction-description">{transaction.description}</div>
+            <div
+              className={`transaction-description ${expanded ? 'expanded' : ''}`}
+              onClick={() => setExpanded(e => !e)}
+              title={expanded ? 'Click to collapse' : 'Click to expand 點擊展開'}
+            >
+              {transaction.description}
+            </div>
           )}
         </div>
         <div className="transaction-meta">
