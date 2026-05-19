@@ -1,54 +1,27 @@
-import initSqlJs, { type Database as SqlJsDatabase } from 'sql.js';
-import path from 'path';
-import fs from 'fs';
+import { createClient, type Client } from '@libsql/client';
 
-// DB_PATH from env (Fly.io, Render, etc.) or local data dir for development
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', 'data', 'tainan.db');
-console.log(`📂 Database path: ${DB_PATH}`);
+// Turso cloud DB URL and token from environment variables
+const TURSO_URL = process.env.TURSO_DATABASE_URL || '';
+const TURSO_TOKEN = process.env.TURSO_AUTH_TOKEN || '';
 
-// Ensure data directory exists
-const dataDir = path.dirname(DB_PATH);
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+if (!TURSO_URL) {
+  console.error('❌ TURSO_DATABASE_URL is not set!');
+  process.exit(1);
 }
 
-let db: SqlJsDatabase;
+console.log(`📂 Database: ${TURSO_URL}`);
 
-// Helper to persist database to disk
-function saveDatabase(): void {
-  if (db) {
-    const data = db.export();
-    const buffer = Buffer.from(data);
-    fs.writeFileSync(DB_PATH, buffer);
-  }
-}
-
-// Auto-save every 30 seconds
-setInterval(saveDatabase, 30000);
-
-// Save on process exit
-process.on('exit', saveDatabase);
-process.on('SIGINT', () => { saveDatabase(); process.exit(); });
-process.on('SIGTERM', () => { saveDatabase(); process.exit(); });
+const client: Client = createClient({
+  url: TURSO_URL,
+  authToken: TURSO_TOKEN,
+});
 
 export async function initializeDatabase(): Promise<void> {
-  const SQL = await initSqlJs();
-
-  // Load existing database or create new one
-  if (fs.existsSync(DB_PATH)) {
-    const fileBuffer = fs.readFileSync(DB_PATH);
-    db = new SQL.Database(fileBuffer);
-    console.log('📂 Loaded existing database');
-  } else {
-    db = new SQL.Database();
-    console.log('🆕 Created new database');
-  }
-
   // Enable foreign keys
-  db.run('PRAGMA foreign_keys = ON');
+  await client.execute('PRAGMA foreign_keys = ON');
 
   // Create tables
-  db.run(`
+  await client.execute(`
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
@@ -58,7 +31,7 @@ export async function initializeDatabase(): Promise<void> {
     )
   `);
 
-  db.run(`
+  await client.execute(`
     CREATE TABLE IF NOT EXISTS transactions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       amount REAL NOT NULL CHECK(amount > 0),
@@ -66,42 +39,20 @@ export async function initializeDatabase(): Promise<void> {
       category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
       person TEXT,
       description TEXT,
+      receipt_image TEXT,
+      voice_memo TEXT,
       date DATE NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  // Migration: add person column to existing databases
-  try {
-    db.run('ALTER TABLE transactions ADD COLUMN person TEXT');
-    console.log('📝 Added person column to transactions');
-  } catch (_e) {
-    // Column already exists — OK
-  }
-
-  // Migration: add receipt_image column
-  try {
-    db.run('ALTER TABLE transactions ADD COLUMN receipt_image TEXT');
-    console.log('🖼️ Added receipt_image column to transactions');
-  } catch (_e) {
-    // Column already exists — OK
-  }
-
-  // Migration: add voice_memo column
-  try {
-    db.run('ALTER TABLE transactions ADD COLUMN voice_memo TEXT');
-    console.log('🎙️ Added voice_memo column to transactions');
-  } catch (_e) {
-    // Column already exists — OK
-  }
-
-  db.run('CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id)');
+  await client.execute('CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)');
+  await client.execute('CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type)');
+  await client.execute('CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id)');
 
   // Audit log table
-  db.run(`
+  await client.execute(`
     CREATE TABLE IF NOT EXISTS audit_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       action TEXT NOT NULL,
@@ -110,9 +61,19 @@ export async function initializeDatabase(): Promise<void> {
     )
   `);
 
+  // Migration: add columns if missing (safe for existing DBs)
+  const migrations = [
+    'ALTER TABLE transactions ADD COLUMN person TEXT',
+    'ALTER TABLE transactions ADD COLUMN receipt_image TEXT',
+    'ALTER TABLE transactions ADD COLUMN voice_memo TEXT',
+  ];
+  for (const sql of migrations) {
+    try { await client.execute(sql); } catch (_e) { /* column exists */ }
+  }
+
   // Seed default categories if table is empty
-  const result = db.exec('SELECT COUNT(*) as count FROM categories');
-  const count = result[0]?.values[0]?.[0] as number;
+  const result = await client.execute('SELECT COUNT(*) as count FROM categories');
+  const count = Number(result.rows[0]?.count) || 0;
 
   if (count === 0) {
     const categories = [
@@ -137,38 +98,34 @@ export async function initializeDatabase(): Promise<void> {
     ];
 
     for (const [name, type, icon] of categories) {
-      db.run('INSERT INTO categories (name, type, icon) VALUES (?, ?, ?)', [name, type, icon]);
+      await client.execute({
+        sql: 'INSERT INTO categories (name, type, icon) VALUES (?, ?, ?)',
+        args: [name, type, icon],
+      });
     }
-    saveDatabase();
     console.log('✅ Seeded default categories');
   }
 
-  saveDatabase();
+  console.log('✅ Database initialized (Turso cloud)');
 }
 
-// Wrapper functions to match the better-sqlite3 API used by routes
-export function dbAll(sql: string, ...params: any[]): any[] {
-  const stmt = db.prepare(sql);
-  if (params.length > 0) stmt.bind(params);
-  const results: any[] = [];
-  while (stmt.step()) {
-    results.push(stmt.getAsObject());
-  }
-  stmt.free();
-  return results;
+// Async wrapper functions used by all routes
+export async function dbAll(sql: string, ...params: any[]): Promise<any[]> {
+  const result = await client.execute({ sql, args: params });
+  return result.rows as any[];
 }
 
-export function dbGet(sql: string, ...params: any[]): any | undefined {
-  const results = dbAll(sql, ...params);
-  return results[0];
+export async function dbGet(sql: string, ...params: any[]): Promise<any | undefined> {
+  const result = await client.execute({ sql, args: params });
+  return result.rows[0] as any | undefined;
 }
 
-export function dbRun(sql: string, ...params: any[]): { lastInsertRowid: number; changes: number } {
-  db.run(sql, params);
-  const lastId = (db.exec('SELECT last_insert_rowid() as id')[0]?.values[0]?.[0] as number) || 0;
-  const changes = db.getRowsModified();
-  saveDatabase();
-  return { lastInsertRowid: lastId, changes };
+export async function dbRun(sql: string, ...params: any[]): Promise<{ lastInsertRowid: number; changes: number }> {
+  const result = await client.execute({ sql, args: params });
+  return {
+    lastInsertRowid: Number(result.lastInsertRowid) || 0,
+    changes: result.rowsAffected,
+  };
 }
 
 export default { dbAll, dbGet, dbRun };

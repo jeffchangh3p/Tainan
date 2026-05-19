@@ -4,10 +4,10 @@ const express_1 = require("express");
 const database_1 = require("../db/database");
 const router = (0, express_1.Router)();
 // GET /api/logs — Get audit log entries
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
     try {
         const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 50));
-        const logs = (0, database_1.dbAll)(`SELECT * FROM audit_log ORDER BY created_at DESC LIMIT ?`, limit);
+        const logs = await (0, database_1.dbAll)('SELECT * FROM audit_log ORDER BY created_at DESC LIMIT ?', limit);
         res.json(logs);
     }
     catch (error) {
@@ -16,9 +16,9 @@ router.get('/', (req, res) => {
     }
 });
 // GET /api/logs/export — Export all logs as CSV
-router.get('/export', (_req, res) => {
+router.get('/export', async (_req, res) => {
     try {
-        const logs = (0, database_1.dbAll)(`SELECT * FROM audit_log ORDER BY created_at DESC`);
+        const logs = await (0, database_1.dbAll)('SELECT * FROM audit_log ORDER BY created_at DESC');
         const BOM = '\uFEFF';
         const header = 'id,action,detail,created_at';
         const rows = logs.map(l => {
@@ -37,7 +37,7 @@ router.get('/export', (_req, res) => {
     }
 });
 // POST /api/logs/import — Import logs from CSV
-router.post('/import', (req, res) => {
+router.post('/import', async (req, res) => {
     try {
         const { csv } = req.body;
         if (!csv || typeof csv !== 'string') {
@@ -66,12 +66,10 @@ router.post('/import', (req, res) => {
                 continue;
             const detail = detailIdx >= 0 ? fields[detailIdx]?.trim() || null : null;
             const createdAt = dateIdx >= 0 ? fields[dateIdx]?.trim() || null : null;
-            if (createdAt) {
-                (0, database_1.dbRun)('INSERT INTO audit_log (action, detail, created_at) VALUES (?, ?, ?)', action, detail, createdAt);
-            }
-            else {
-                (0, database_1.dbRun)('INSERT INTO audit_log (action, detail) VALUES (?, ?)', action, detail);
-            }
+            if (createdAt)
+                await (0, database_1.dbRun)('INSERT INTO audit_log (action, detail, created_at) VALUES (?, ?, ?)', action, detail, createdAt);
+            else
+                await (0, database_1.dbRun)('INSERT INTO audit_log (action, detail) VALUES (?, ?)', action, detail);
             imported++;
         }
         res.json({ message: `Imported ${imported} log entries`, imported });

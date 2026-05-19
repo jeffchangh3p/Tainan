@@ -5,9 +5,9 @@ import { validate, createCategorySchema } from '../middleware/validation';
 const router = Router();
 
 // GET /api/categories — List all
-router.get('/', (_req: Request, res: Response): void => {
+router.get('/', async (_req: Request, res: Response): Promise<void> => {
   try {
-    const categories = dbAll('SELECT * FROM categories ORDER BY type, name');
+    const categories = await dbAll('SELECT * FROM categories ORDER BY type, name');
     res.json(categories);
   } catch (error) {
     console.error('Error fetching categories:', error);
@@ -16,15 +16,15 @@ router.get('/', (_req: Request, res: Response): void => {
 });
 
 // POST /api/categories — Create
-router.post('/', validate(createCategorySchema), (req: Request, res: Response): void => {
+router.post('/', validate(createCategorySchema), async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, type, icon } = req.body;
-    const result = dbRun(
+    const result = await dbRun(
       'INSERT INTO categories (name, type, icon) VALUES (?, ?, ?)',
       name, type, icon || null
     );
 
-    const category = dbGet('SELECT * FROM categories WHERE id = ?', result.lastInsertRowid);
+    const category = await dbGet('SELECT * FROM categories WHERE id = ?', result.lastInsertRowid);
     res.status(201).json(category);
   } catch (error: any) {
     if (error?.message?.includes('UNIQUE')) {
@@ -37,10 +37,10 @@ router.post('/', validate(createCategorySchema), (req: Request, res: Response): 
 });
 
 // DELETE /api/categories/:id — Delete
-router.delete('/:id', (req: Request, res: Response): void => {
+router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const result = dbRun('DELETE FROM categories WHERE id = ?', Number(id));
+    const result = await dbRun('DELETE FROM categories WHERE id = ?', Number(id));
     if (result.changes === 0) {
       res.status(404).json({ error: 'Category not found' });
       return;

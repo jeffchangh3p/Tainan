@@ -4,13 +4,10 @@ import { dbAll, dbRun } from '../db/database';
 const router = Router();
 
 // GET /api/logs — Get audit log entries
-router.get('/', (req: Request, res: Response): void => {
+router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 50));
-    const logs = dbAll(
-      `SELECT * FROM audit_log ORDER BY created_at DESC LIMIT ?`,
-      limit
-    );
+    const logs = await dbAll('SELECT * FROM audit_log ORDER BY created_at DESC LIMIT ?', limit);
     res.json(logs);
   } catch (error) {
     console.error('Error fetching logs:', error);
@@ -19,9 +16,9 @@ router.get('/', (req: Request, res: Response): void => {
 });
 
 // GET /api/logs/export — Export all logs as CSV
-router.get('/export', (_req: Request, res: Response): void => {
+router.get('/export', async (_req: Request, res: Response): Promise<void> => {
   try {
-    const logs = dbAll(`SELECT * FROM audit_log ORDER BY created_at DESC`);
+    const logs = await dbAll('SELECT * FROM audit_log ORDER BY created_at DESC');
 
     const BOM = '\uFEFF';
     const header = 'id,action,detail,created_at';
@@ -32,7 +29,6 @@ router.get('/export', (_req: Request, res: Response): void => {
 
     const csv = BOM + header + '\n' + rows.join('\n');
     const today = new Date().toISOString().split('T')[0];
-
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="tainan_logs_${today}.csv"`);
     res.send(csv);
@@ -43,31 +39,20 @@ router.get('/export', (_req: Request, res: Response): void => {
 });
 
 // POST /api/logs/import — Import logs from CSV
-router.post('/import', (req: Request, res: Response): void => {
+router.post('/import', async (req: Request, res: Response): Promise<void> => {
   try {
     const { csv } = req.body;
-    if (!csv || typeof csv !== 'string') {
-      res.status(400).json({ error: 'Missing csv field' });
-      return;
-    }
+    if (!csv || typeof csv !== 'string') { res.status(400).json({ error: 'Missing csv field' }); return; }
 
     const raw = csv.replace(/^\uFEFF/, '');
     const lines = raw.split(/\r?\n/).filter(l => l.trim());
-
-    if (lines.length < 2) {
-      res.status(400).json({ error: 'CSV must have header + at least 1 data row' });
-      return;
-    }
+    if (lines.length < 2) { res.status(400).json({ error: 'CSV must have header + at least 1 data row' }); return; }
 
     const header = lines[0].toLowerCase().split(',').map(h => h.trim());
     const actionIdx = header.indexOf('action');
     const detailIdx = header.indexOf('detail');
     const dateIdx = header.indexOf('created_at');
-
-    if (actionIdx < 0) {
-      res.status(400).json({ error: 'CSV must have an action column' });
-      return;
-    }
+    if (actionIdx < 0) { res.status(400).json({ error: 'CSV must have an action column' }); return; }
 
     let imported = 0;
     for (let i = 1; i < lines.length; i++) {
@@ -77,11 +62,8 @@ router.post('/import', (req: Request, res: Response): void => {
       const detail = detailIdx >= 0 ? fields[detailIdx]?.trim() || null : null;
       const createdAt = dateIdx >= 0 ? fields[dateIdx]?.trim() || null : null;
 
-      if (createdAt) {
-        dbRun('INSERT INTO audit_log (action, detail, created_at) VALUES (?, ?, ?)', action, detail, createdAt);
-      } else {
-        dbRun('INSERT INTO audit_log (action, detail) VALUES (?, ?)', action, detail);
-      }
+      if (createdAt) await dbRun('INSERT INTO audit_log (action, detail, created_at) VALUES (?, ?, ?)', action, detail, createdAt);
+      else await dbRun('INSERT INTO audit_log (action, detail) VALUES (?, ?)', action, detail);
       imported++;
     }
 

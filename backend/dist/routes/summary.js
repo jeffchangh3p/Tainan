@@ -4,10 +4,10 @@ const express_1 = require("express");
 const database_1 = require("../db/database");
 const router = (0, express_1.Router)();
 // GET /api/summary/monthly — Monthly income/expense totals
-router.get('/monthly', (req, res) => {
+router.get('/monthly', async (req, res) => {
     try {
         const months = Number(req.query.months) || 12;
-        const summary = (0, database_1.dbAll)(`
+        const summary = await (0, database_1.dbAll)(`
       SELECT
         strftime('%Y-%m', date) as month,
         SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as total_income,
@@ -26,19 +26,12 @@ router.get('/monthly', (req, res) => {
     }
 });
 // GET /api/summary/category — Breakdown by category
-router.get('/category', (req, res) => {
+router.get('/category', async (req, res) => {
     try {
         let query = `
-      SELECT
-        c.id as category_id,
-        c.name as category_name,
-        c.icon as category_icon,
-        t.type,
-        SUM(t.amount) as total,
-        COUNT(*) as count
-      FROM transactions t
-      LEFT JOIN categories c ON t.category_id = c.id
-      WHERE 1=1
+      SELECT c.id as category_id, c.name as category_name, c.icon as category_icon,
+        t.type, SUM(t.amount) as total, COUNT(*) as count
+      FROM transactions t LEFT JOIN categories c ON t.category_id = c.id WHERE 1=1
     `;
         const params = [];
         if (req.query.type) {
@@ -54,7 +47,7 @@ router.get('/category', (req, res) => {
             params.push(req.query.endDate);
         }
         query += ' GROUP BY c.id, t.type ORDER BY total DESC';
-        const summary = (0, database_1.dbAll)(query, ...params);
+        const summary = await (0, database_1.dbAll)(query, ...params);
         res.json(summary);
     }
     catch (error) {
@@ -63,16 +56,15 @@ router.get('/category', (req, res) => {
     }
 });
 // GET /api/summary/overview — Quick overview stats
-router.get('/overview', (_req, res) => {
+router.get('/overview', async (_req, res) => {
     try {
-        const currentMonth = (0, database_1.dbGet)(`
+        const currentMonth = await (0, database_1.dbGet)(`
       SELECT
         SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as month_income,
         SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as month_expense
-      FROM transactions
-      WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')
+      FROM transactions WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')
     `);
-        const allTime = (0, database_1.dbGet)(`
+        const allTime = await (0, database_1.dbGet)(`
       SELECT
         SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as total_income,
         SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as total_expense,
@@ -81,15 +73,15 @@ router.get('/overview', (_req, res) => {
     `);
         res.json({
             currentMonth: {
-                income: currentMonth?.month_income || 0,
-                expense: currentMonth?.month_expense || 0,
-                balance: (currentMonth?.month_income || 0) - (currentMonth?.month_expense || 0),
+                income: Number(currentMonth?.month_income) || 0,
+                expense: Number(currentMonth?.month_expense) || 0,
+                balance: (Number(currentMonth?.month_income) || 0) - (Number(currentMonth?.month_expense) || 0),
             },
             allTime: {
-                income: allTime?.total_income || 0,
-                expense: allTime?.total_expense || 0,
-                balance: (allTime?.total_income || 0) - (allTime?.total_expense || 0),
-                transactions: allTime?.total_transactions || 0,
+                income: Number(allTime?.total_income) || 0,
+                expense: Number(allTime?.total_expense) || 0,
+                balance: (Number(allTime?.total_income) || 0) - (Number(allTime?.total_expense) || 0),
+                transactions: Number(allTime?.total_transactions) || 0,
             },
         });
     }
@@ -99,17 +91,15 @@ router.get('/overview', (_req, res) => {
     }
 });
 // GET /api/summary/person — Subtotal per person
-router.get('/person', (req, res) => {
+router.get('/person', async (req, res) => {
     try {
         let query = `
-      SELECT
-        COALESCE(person, '(unassigned)') as person,
+      SELECT COALESCE(person, '(unassigned)') as person,
         SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as total_income,
         SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as total_expense,
         SUM(CASE WHEN type = 'income' THEN amount ELSE -amount END) as net,
         COUNT(*) as count
-      FROM transactions
-      WHERE 1=1
+      FROM transactions WHERE 1=1
     `;
         const params = [];
         if (req.query.startDate) {
@@ -121,7 +111,7 @@ router.get('/person', (req, res) => {
             params.push(req.query.endDate);
         }
         query += ' GROUP BY person ORDER BY total_expense DESC';
-        const summary = (0, database_1.dbAll)(query, ...params);
+        const summary = await (0, database_1.dbAll)(query, ...params);
         res.json(summary);
     }
     catch (error) {
