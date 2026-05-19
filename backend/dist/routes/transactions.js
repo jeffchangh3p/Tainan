@@ -34,6 +34,10 @@ router.get('/', (req, res) => {
             query += ' AND t.description LIKE ?';
             params.push(`%${req.query.search}%`);
         }
+        if (req.query.person) {
+            query += ' AND t.person = ?';
+            params.push(req.query.person);
+        }
         query += ' ORDER BY t.date DESC, t.created_at DESC';
         // Pagination
         const page = Math.max(1, Number(req.query.page) || 1);
@@ -85,8 +89,8 @@ router.get('/', (req, res) => {
 // POST /api/transactions — Create
 router.post('/', (0, validation_1.validate)(validation_1.createTransactionSchema), (req, res) => {
     try {
-        const { amount, type, category_id, description, date } = req.body;
-        const result = (0, database_1.dbRun)(`INSERT INTO transactions (amount, type, category_id, description, date) VALUES (?, ?, ?, ?, ?)`, amount, type, category_id || null, description || null, date);
+        const { amount, type, category_id, person, description, date } = req.body;
+        const result = (0, database_1.dbRun)(`INSERT INTO transactions (amount, type, category_id, person, description, date) VALUES (?, ?, ?, ?, ?, ?)`, amount, type, category_id || null, person || null, description || null, date);
         const transaction = (0, database_1.dbGet)(`SELECT t.*, c.name as category_name, c.icon as category_icon
        FROM transactions t LEFT JOIN categories c ON t.category_id = c.id
        WHERE t.id = ?`, result.lastInsertRowid);
@@ -120,6 +124,10 @@ router.put('/:id', (0, validation_1.validate)(validation_1.updateTransactionSche
         if (fields.category_id !== undefined) {
             updates.push('category_id = ?');
             values.push(fields.category_id);
+        }
+        if (fields.person !== undefined) {
+            updates.push('person = ?');
+            values.push(fields.person);
         }
         if (fields.description !== undefined) {
             updates.push('description = ?');

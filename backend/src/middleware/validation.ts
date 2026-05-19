@@ -5,6 +5,7 @@ export const createTransactionSchema = z.object({
   amount: z.number().positive('Amount must be positive'),
   type: z.enum(['income', 'expense']),
   category_id: z.number().int().positive().nullable().optional(),
+  person: z.string().max(50).nullable().optional(),
   description: z.string().max(500).nullable().optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD format'),
 });

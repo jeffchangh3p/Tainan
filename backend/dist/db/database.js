@@ -61,12 +61,21 @@ async function initializeDatabase() {
       amount REAL NOT NULL CHECK(amount > 0),
       type TEXT NOT NULL CHECK(type IN ('income', 'expense')),
       category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+      person TEXT,
       description TEXT,
       date DATE NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+    // Migration: add person column to existing databases
+    try {
+        db.run('ALTER TABLE transactions ADD COLUMN person TEXT');
+        console.log('📝 Added person column to transactions');
+    }
+    catch (_e) {
+        // Column already exists — OK
+    }
     db.run('CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)');
     db.run('CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type)');
     db.run('CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id)');

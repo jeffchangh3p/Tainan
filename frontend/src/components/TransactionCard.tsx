@@ -34,6 +34,9 @@ export default function TransactionCard({ transaction, onDelete, onEdit }: Props
       <div className="transaction-info">
         <div className="transaction-category">
           {transaction.category_name || (isIncome ? 'Income' : 'Expense')}
+          {transaction.person && (
+            <span className="transaction-person"> · {transaction.person}</span>
+          )}
         </div>
         {transaction.description && (
           <div className="transaction-description">{transaction.description}</div>

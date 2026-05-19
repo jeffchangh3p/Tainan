@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createTransaction, getCategories } from '../services/api';
 import type { Category, TransactionFormData } from '../types';
+import { FAMILY_MEMBERS } from '../types';
 
 function getTodayDate(): string {
   const d = new Date();
@@ -18,6 +19,7 @@ export default function AddTransaction() {
     amount: '',
     type: 'expense',
     category_id: null,
+    person: '',
     description: '',
     date: getTodayDate(),
   });
@@ -52,6 +54,7 @@ export default function AddTransaction() {
         amount,
         type: form.type,
         category_id: form.category_id,
+        person: form.person || null,
         description: form.description || null,
         date: form.date,
       });
@@ -63,6 +66,7 @@ export default function AddTransaction() {
         amount: '',
         type: form.type,
         category_id: null,
+        person: form.person,
         description: '',
         date: getTodayDate(),
       });
@@ -162,6 +166,24 @@ export default function AddTransaction() {
                 required
               />
             </div>
+          </div>
+
+          {/* Person */}
+          <div className="form-group">
+            <label className="form-label" htmlFor="person">Person 人員</label>
+            <select
+              id="person"
+              className="form-select"
+              value={form.person}
+              onChange={e => setForm(f => ({ ...f, person: e.target.value }))}
+            >
+              <option value="">— Select —</option>
+              {FAMILY_MEMBERS.map(name => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Description */}

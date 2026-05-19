@@ -69,6 +69,7 @@ export default function History() {
     amount: number;
     type: 'income' | 'expense';
     category_id: number | null;
+    person: string | null;
     description: string | null;
     date: string;
   }) {

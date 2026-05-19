@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Transaction, Category } from '../types';
+import { FAMILY_MEMBERS } from '../types';
 
 interface Props {
   transaction: Transaction;
@@ -8,6 +9,7 @@ interface Props {
     amount: number;
     type: 'income' | 'expense';
     category_id: number | null;
+    person: string | null;
     description: string | null;
     date: string;
   }) => Promise<void>;
@@ -19,6 +21,7 @@ export default function EditModal({ transaction, categories, onSave, onClose }: 
     amount: String(transaction.amount),
     type: transaction.type as 'income' | 'expense',
     category_id: transaction.category_id,
+    person: transaction.person || '',
     description: transaction.description || '',
     date: transaction.date,
   });
@@ -44,6 +47,7 @@ export default function EditModal({ transaction, categories, onSave, onClose }: 
         amount,
         type: form.type,
         category_id: form.category_id,
+        person: form.person || null,
         description: form.description || null,
         date: form.date,
       });
@@ -130,6 +134,22 @@ export default function EditModal({ transaction, categories, onSave, onClose }: 
             </div>
           </div>
 
+          {/* Person */}
+          <div className="form-group">
+            <label className="form-label">Person 人員</label>
+            <select
+              className="form-select"
+              value={form.person}
+              onChange={e => setForm(f => ({ ...f, person: e.target.value }))}
+            >
+              <option value="">— Select —</option>
+              {FAMILY_MEMBERS.map(name => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
           {/* Description */}
           <div className="form-group">
             <label className="form-label">Note 備註</label>

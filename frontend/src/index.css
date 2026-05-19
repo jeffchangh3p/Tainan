@@ -401,6 +401,12 @@ a:hover {
   text-overflow: ellipsis;
 }
 
+.transaction-person {
+  font-weight: 400;
+  font-size: 0.85rem;
+  color: var(--accent-gold);
+}
+
 .transaction-meta {
   text-align: right;
   flex-shrink: 0;

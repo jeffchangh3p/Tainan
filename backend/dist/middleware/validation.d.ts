@@ -4,6 +4,7 @@ export declare const createTransactionSchema: z.ZodObject<{
     amount: z.ZodNumber;
     type: z.ZodEnum<["income", "expense"]>;
     category_id: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    person: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     date: z.ZodString;
 }, "strip", z.ZodTypeAny, {
@@ -11,18 +12,21 @@ export declare const createTransactionSchema: z.ZodObject<{
     amount: number;
     date: string;
     category_id?: number | null | undefined;
+    person?: string | null | undefined;
     description?: string | null | undefined;
 }, {
     type: "income" | "expense";
     amount: number;
     date: string;
     category_id?: number | null | undefined;
+    person?: string | null | undefined;
     description?: string | null | undefined;
 }>;
 export declare const updateTransactionSchema: z.ZodObject<{
     amount: z.ZodOptional<z.ZodNumber>;
     type: z.ZodOptional<z.ZodEnum<["income", "expense"]>>;
     category_id: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodNumber>>>;
+    person: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
     description: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
     date: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
@@ -30,12 +34,14 @@ export declare const updateTransactionSchema: z.ZodObject<{
     amount?: number | undefined;
     date?: string | undefined;
     category_id?: number | null | undefined;
+    person?: string | null | undefined;
     description?: string | null | undefined;
 }, {
     type?: "income" | "expense" | undefined;
     amount?: number | undefined;
     date?: string | undefined;
     category_id?: number | null | undefined;
+    person?: string | null | undefined;
     description?: string | null | undefined;
 }>;
 export declare const createCategorySchema: z.ZodObject<{

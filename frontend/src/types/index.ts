@@ -13,6 +13,7 @@ export interface Transaction {
   category_id: number | null;
   category_name?: string;
   category_icon?: string;
+  person: string | null;
   description: string | null;
   date: string;
   created_at: string;
@@ -63,6 +64,14 @@ export interface TransactionFormData {
   amount: string;
   type: 'income' | 'expense';
   category_id: number | null;
+  person: string;
   description: string;
   date: string;
 }
+
+export const FAMILY_MEMBERS = [
+  '張金蓓',
+  '張金蕾',
+  '張金莉',
+  '張潤檯',
+];

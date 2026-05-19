@@ -12,6 +12,7 @@ export interface Transaction {
     category_id: number | null;
     category_name?: string;
     category_icon?: string;
+    person: string | null;
     description: string | null;
     date: string;
     created_at: string;

@@ -31,6 +31,7 @@ export async function createTransaction(tx: {
   amount: number;
   type: 'income' | 'expense';
   category_id?: number | null;
+  person?: string | null;
   description?: string | null;
   date: string;
 }): Promise<Transaction> {
@@ -44,6 +45,7 @@ export async function updateTransaction(
     amount: number;
     type: 'income' | 'expense';
     category_id: number | null;
+    person: string | null;
     description: string | null;
     date: string;
   }>

@@ -35,6 +35,10 @@ router.get('/', (req: Request, res: Response): void => {
       query += ' AND t.description LIKE ?';
       params.push(`%${req.query.search}%`);
     }
+    if (req.query.person) {
+      query += ' AND t.person = ?';
+      params.push(req.query.person);
+    }
 
     query += ' ORDER BY t.date DESC, t.created_at DESC';
 
@@ -92,10 +96,10 @@ router.get('/', (req: Request, res: Response): void => {
 // POST /api/transactions — Create
 router.post('/', validate(createTransactionSchema), (req: Request, res: Response): void => {
   try {
-    const { amount, type, category_id, description, date } = req.body;
+    const { amount, type, category_id, person, description, date } = req.body;
     const result = dbRun(
-      `INSERT INTO transactions (amount, type, category_id, description, date) VALUES (?, ?, ?, ?, ?)`,
-      amount, type, category_id || null, description || null, date
+      `INSERT INTO transactions (amount, type, category_id, person, description, date) VALUES (?, ?, ?, ?, ?, ?)`,
+      amount, type, category_id || null, person || null, description || null, date
     );
 
     const transaction = dbGet(
@@ -129,6 +133,7 @@ router.put('/:id', validate(updateTransactionSchema), (req: Request, res: Respon
     if (fields.amount !== undefined) { updates.push('amount = ?'); values.push(fields.amount); }
     if (fields.type !== undefined) { updates.push('type = ?'); values.push(fields.type); }
     if (fields.category_id !== undefined) { updates.push('category_id = ?'); values.push(fields.category_id); }
+    if (fields.person !== undefined) { updates.push('person = ?'); values.push(fields.person); }
     if (fields.description !== undefined) { updates.push('description = ?'); values.push(fields.description); }
     if (fields.date !== undefined) { updates.push('date = ?'); values.push(fields.date); }
 
