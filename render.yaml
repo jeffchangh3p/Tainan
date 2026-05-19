@@ -5,6 +5,10 @@ services:
     plan: free
     buildCommand: npm --prefix backend install --omit=dev
     startCommand: node backend/dist/server.js
+    disk:
+      name: tainan-data
+      mountPath: /opt/render/data
+      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: 20.18.0

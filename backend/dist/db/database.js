@@ -10,7 +10,9 @@ exports.dbRun = dbRun;
 const sql_js_1 = __importDefault(require("sql.js"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
-const DB_PATH = path_1.default.join(__dirname, '..', '..', 'data', 'tainan.db');
+// Use Render persistent disk if available, otherwise local data dir
+const DB_PATH = process.env.DB_PATH
+    || (process.env.RENDER ? '/opt/render/data/tainan.db' : path_1.default.join(__dirname, '..', '..', 'data', 'tainan.db'));
 // Ensure data directory exists
 const dataDir = path_1.default.dirname(DB_PATH);
 if (!fs_1.default.existsSync(dataDir)) {

@@ -2,7 +2,9 @@ import initSqlJs, { type Database as SqlJsDatabase } from 'sql.js';
 import path from 'path';
 import fs from 'fs';
 
-const DB_PATH = path.join(__dirname, '..', '..', 'data', 'tainan.db');
+// Use Render persistent disk if available, otherwise local data dir
+const DB_PATH = process.env.DB_PATH
+  || (process.env.RENDER ? '/opt/render/data/tainan.db' : path.join(__dirname, '..', '..', 'data', 'tainan.db'));
 
 // Ensure data directory exists
 const dataDir = path.dirname(DB_PATH);
