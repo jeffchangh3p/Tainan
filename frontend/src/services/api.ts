@@ -149,3 +149,20 @@ export async function getLogs(limit?: number): Promise<AuditLog[]> {
   const { data } = await api.get('/logs', { params: { limit } });
   return data;
 }
+
+export async function exportLogs(): Promise<void> {
+  const response = await api.get('/logs/export', { responseType: 'blob' });
+  const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const today = new Date().toISOString().split('T')[0];
+  a.href = url;
+  a.download = `tainan_logs_${today}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function importLogs(csvText: string): Promise<{ message: string; imported: number }> {
+  const { data } = await api.post('/logs/import', { csv: csvText });
+  return data;
+}

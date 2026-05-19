@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getTransactions, getCategories, deleteTransaction, updateTransaction, exportCSV, importCSV, getLogs } from '../services/api';
+import { getTransactions, getCategories, deleteTransaction, updateTransaction, exportCSV, importCSV, getLogs, exportLogs, importLogs } from '../services/api';
 import type { AuditLog } from '../services/api';
 import TransactionCard from '../components/TransactionCard';
 import EditModal from '../components/EditModal';
@@ -14,6 +14,7 @@ export default function History() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [showLogs, setShowLogs] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logFileInputRef = useRef<HTMLInputElement>(null);
 
   // Filters
   const [filters, setFilters] = useState({
@@ -296,9 +297,37 @@ export default function History() {
         <div className="card" style={{ marginTop: '24px' }}>
           <div className="card-header">
             <h3 className="card-title">📝 Operation Log 操作日誌</h3>
-            <button className="btn btn-secondary" onClick={fetchLogs} style={{ fontSize: '0.8rem', padding: '4px 12px' }}>
-              ↻ Refresh
-            </button>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button className="btn btn-secondary" onClick={fetchLogs} style={{ fontSize: '0.8rem', padding: '4px 12px' }}>
+                ↻ Refresh
+              </button>
+              <button className="btn btn-secondary" onClick={async () => {
+                try { await exportLogs(); showToast('📥 Logs exported', 'success'); }
+                catch { showToast('❌ Export failed', 'error'); }
+              }} style={{ fontSize: '0.8rem', padding: '4px 12px' }}>
+                📥 Export
+              </button>
+              <button className="btn btn-secondary" onClick={() => logFileInputRef.current?.click()} style={{ fontSize: '0.8rem', padding: '4px 12px' }}>
+                📤 Import
+              </button>
+              <input
+                ref={logFileInputRef}
+                type="file"
+                accept=".csv"
+                style={{ display: 'none' }}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const text = await file.text();
+                    const result = await importLogs(text);
+                    showToast(`📤 ${result.message}`, 'success');
+                    fetchLogs();
+                  } catch { showToast('❌ Import failed', 'error'); }
+                  if (logFileInputRef.current) logFileInputRef.current.value = '';
+                }}
+              />
+            </div>
           </div>
           {logs.length > 0 ? (
             <div className="log-list">
