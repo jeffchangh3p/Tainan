@@ -981,3 +981,107 @@ a:hover {
   justify-content: flex-end;
   margin-top: 24px;
 }
+
+/* ==============================
+   Page Actions (Export/Import/Logs)
+   ============================== */
+.page-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ==============================
+   Audit Log
+   ============================== */
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.log-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-glass);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+}
+
+.log-action {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.log-action-create {
+  background: var(--income-bg);
+  color: var(--income-color);
+  border: 1px solid var(--income-border);
+}
+
+.log-action-update {
+  background: rgba(96, 165, 250, 0.12);
+  color: #60a5fa;
+  border: 1px solid rgba(96, 165, 250, 0.25);
+}
+
+.log-action-delete {
+  background: var(--expense-bg);
+  color: var(--expense-color);
+  border: 1px solid var(--expense-border);
+}
+
+.log-action-export {
+  background: rgba(245, 185, 66, 0.12);
+  color: var(--accent-gold);
+  border: 1px solid rgba(245, 185, 66, 0.25);
+}
+
+.log-action-import {
+  background: rgba(168, 85, 247, 0.12);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.25);
+}
+
+.log-detail {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-time {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 768px) {
+  .page-actions {
+    width: 100%;
+  }
+  .page-actions .btn {
+    flex: 1;
+    font-size: 0.8rem;
+    padding: 8px 10px;
+  }
+  .log-entry {
+    flex-wrap: wrap;
+  }
+  .log-time {
+    width: 100%;
+    text-align: right;
+  }
+}

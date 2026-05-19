@@ -79,6 +79,15 @@ async function initializeDatabase() {
     db.run('CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)');
     db.run('CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type)');
     db.run('CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id)');
+    // Audit log table
+    db.run(`
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      action TEXT NOT NULL,
+      detail TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
     // Seed default categories if table is empty
     const result = db.exec('SELECT COUNT(*) as count FROM categories');
     const count = result[0]?.values[0]?.[0];

@@ -10,6 +10,7 @@ const database_1 = require("./db/database");
 const transactions_1 = __importDefault(require("./routes/transactions"));
 const categories_1 = __importDefault(require("./routes/categories"));
 const summary_1 = __importDefault(require("./routes/summary"));
+const logs_1 = __importDefault(require("./routes/logs"));
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3001;
 // Middleware
@@ -17,7 +18,7 @@ app.use((0, cors_1.default)({
     origin: true,
     credentials: true,
 }));
-app.use(express_1.default.json());
+app.use(express_1.default.json({ limit: '5mb' }));
 // Request logging
 app.use((req, _res, next) => {
     console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
@@ -27,6 +28,7 @@ app.use((req, _res, next) => {
 app.use('/api/transactions', transactions_1.default);
 app.use('/api/categories', categories_1.default);
 app.use('/api/summary', summary_1.default);
+app.use('/api/logs', logs_1.default);
 // Health check
 app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });

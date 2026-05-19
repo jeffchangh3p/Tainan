@@ -4,6 +4,15 @@ import { validate, createTransactionSchema, updateTransactionSchema } from '../m
 
 const router = Router();
 
+// Helper: write to audit log
+function logAction(action: string, detail?: string): void {
+  try {
+    dbRun('INSERT INTO audit_log (action, detail) VALUES (?, ?)', action, detail || null);
+  } catch (e) {
+    console.error('Audit log error:', e);
+  }
+}
+
 // GET /api/transactions — List with filters
 router.get('/', (req: Request, res: Response): void => {
   try {
@@ -110,6 +119,8 @@ router.post('/', validate(createTransactionSchema), (req: Request, res: Response
     );
 
     res.status(201).json(transaction);
+
+    logAction('CREATE', `NT$${amount} ${type} — ${transaction.category_name || 'N/A'} — ${transaction.person || ''} — ${date}`);
   } catch (error) {
     console.error('Error creating transaction:', error);
     res.status(500).json({ error: 'Failed to create transaction' });
@@ -155,6 +166,8 @@ router.put('/:id', validate(updateTransactionSchema), (req: Request, res: Respon
     );
 
     res.json(updated);
+
+    logAction('UPDATE', `#${id} → NT$${updated.amount} ${updated.type} — ${updated.person || ''} — ${updated.date}`);
   } catch (error) {
     console.error('Error updating transaction:', error);
     res.status(500).json({ error: 'Failed to update transaction' });
@@ -171,10 +184,174 @@ router.delete('/:id', (req: Request, res: Response): void => {
       return;
     }
     res.json({ message: 'Transaction deleted' });
+
+    logAction('DELETE', `#${id}`);
   } catch (error) {
     console.error('Error deleting transaction:', error);
     res.status(500).json({ error: 'Failed to delete transaction' });
   }
 });
+
+// GET /api/transactions/export — Export all as CSV
+router.get('/export', (_req: Request, res: Response): void => {
+  try {
+    const transactions = dbAll(`
+      SELECT t.date, t.type, t.amount, t.person,
+             c.name as category_name, t.description
+      FROM transactions t
+      LEFT JOIN categories c ON t.category_id = c.id
+      ORDER BY t.date DESC, t.created_at DESC
+    `);
+
+    // BOM for Excel UTF-8 compatibility
+    const BOM = '\uFEFF';
+    const header = 'date,type,amount,person,category,description';
+    const rows = transactions.map((t: any) => {
+      const desc = (t.description || '').replace(/"/g, '""');
+      const cat = (t.category_name || '').replace(/"/g, '""');
+      const person = (t.person || '').replace(/"/g, '""');
+      return `${t.date},${t.type},${t.amount},"${person}","${cat}","${desc}"`;
+    });
+
+    const csv = BOM + header + '\n' + rows.join('\n');
+    const today = new Date().toISOString().split('T')[0];
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="tainan_${today}.csv"`);
+    res.send(csv);
+
+    logAction('EXPORT', `${transactions.length} records exported`);
+  } catch (error) {
+    console.error('Error exporting:', error);
+    res.status(500).json({ error: 'Failed to export' });
+  }
+});
+
+// POST /api/transactions/import — Import from CSV
+router.post('/import', (req: Request, res: Response): void => {
+  try {
+    const { csv } = req.body;
+    if (!csv || typeof csv !== 'string') {
+      res.status(400).json({ error: 'Missing csv field' });
+      return;
+    }
+
+    // Parse CSV (handle BOM)
+    const raw = csv.replace(/^\uFEFF/, '');
+    const lines = raw.split(/\r?\n/).filter(l => l.trim());
+
+    if (lines.length < 2) {
+      res.status(400).json({ error: 'CSV must have header + at least 1 data row' });
+      return;
+    }
+
+    // Parse header
+    const header = lines[0].toLowerCase().split(',').map(h => h.trim());
+    const dateIdx = header.indexOf('date');
+    const typeIdx = header.indexOf('type');
+    const amountIdx = header.indexOf('amount');
+    const personIdx = header.indexOf('person');
+    const categoryIdx = header.indexOf('category');
+    const descIdx = header.indexOf('description');
+
+    if (dateIdx < 0 || typeIdx < 0 || amountIdx < 0) {
+      res.status(400).json({ error: 'CSV must have date, type, amount columns' });
+      return;
+    }
+
+    // Get category lookup map
+    const categories = dbAll('SELECT id, name, type FROM categories');
+    const catMap = new Map<string, number>();
+    for (const c of categories) {
+      catMap.set((c as any).name, (c as any).id);
+    }
+
+    let imported = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      try {
+        const fields = parseCSVLine(lines[i]);
+        const date = fields[dateIdx]?.trim();
+        const type = fields[typeIdx]?.trim();
+        const amount = parseFloat(fields[amountIdx]?.trim());
+        const person = personIdx >= 0 ? fields[personIdx]?.trim() || null : null;
+        const category = categoryIdx >= 0 ? fields[categoryIdx]?.trim() || null : null;
+        const description = descIdx >= 0 ? fields[descIdx]?.trim() || null : null;
+
+        if (!date || !type || !amount || amount <= 0) {
+          skipped++;
+          errors.push(`Row ${i + 1}: invalid date/type/amount`);
+          continue;
+        }
+        if (type !== 'income' && type !== 'expense') {
+          skipped++;
+          errors.push(`Row ${i + 1}: type must be income or expense`);
+          continue;
+        }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          skipped++;
+          errors.push(`Row ${i + 1}: date must be YYYY-MM-DD`);
+          continue;
+        }
+
+        const categoryId = category ? (catMap.get(category) || null) : null;
+
+        dbRun(
+          `INSERT INTO transactions (amount, type, category_id, person, description, date) VALUES (?, ?, ?, ?, ?, ?)`,
+          amount, type, categoryId, person, description, date
+        );
+        imported++;
+      } catch (rowErr) {
+        skipped++;
+        errors.push(`Row ${i + 1}: ${String(rowErr)}`);
+      }
+    }
+
+    res.json({
+      message: `Imported ${imported} records, skipped ${skipped}`,
+      imported,
+      skipped,
+      errors: errors.slice(0, 10),
+    });
+
+    logAction('IMPORT', `${imported} imported, ${skipped} skipped`);
+  } catch (error) {
+    console.error('Error importing:', error);
+    res.status(500).json({ error: 'Failed to import' });
+  }
+});
+
+// Helper: parse a CSV line respecting quoted fields
+function parseCSVLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        current += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        fields.push(current);
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+  }
+  fields.push(current);
+  return fields;
+}
 
 export default router;

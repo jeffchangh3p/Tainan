@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { getTransactions, getCategories, deleteTransaction, updateTransaction } from '../services/api';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { getTransactions, getCategories, deleteTransaction, updateTransaction, exportCSV, importCSV, getLogs } from '../services/api';
+import type { AuditLog } from '../services/api';
 import TransactionCard from '../components/TransactionCard';
 import EditModal from '../components/EditModal';
 import type { Transaction, Category, PaginatedResponse } from '../types';
@@ -10,6 +11,9 @@ export default function History() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Filters
   const [filters, setFilters] = useState({
@@ -88,6 +92,41 @@ export default function History() {
     setFilters(f => ({ ...f, [key]: value, page: 1 }));
   }
 
+  async function handleExport() {
+    try {
+      await exportCSV();
+      showToast('📥 CSV exported 匯出成功', 'success');
+    } catch (err) {
+      console.error('Export error:', err);
+      showToast('❌ Export failed', 'error');
+    }
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const result = await importCSV(text);
+      showToast(`📤 ${result.message}`, result.skipped > 0 ? 'error' : 'success');
+      fetchData();
+    } catch (err) {
+      console.error('Import error:', err);
+      showToast('❌ Import failed', 'error');
+    }
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  async function fetchLogs() {
+    try {
+      const data = await getLogs(50);
+      setLogs(data);
+    } catch (err) {
+      console.error('Error fetching logs:', err);
+    }
+  }
+
   const transactions = result?.data || [];
   const pagination = result?.pagination;
 
@@ -97,9 +136,30 @@ export default function History() {
         <div>
           <h1 className="page-title">History</h1>
           <p className="page-subtitle">
-            收支歷史紀錄 — All financial records
+            収支歷史紀錄 — All financial records
             {pagination && ` (${pagination.total} total)`}
           </p>
+        </div>
+        <div className="page-actions">
+          <button className="btn btn-secondary" onClick={handleExport}>
+            📥 Export 匯出
+          </button>
+          <button className="btn btn-secondary" onClick={() => fileInputRef.current?.click()}>
+            📤 Import 匯入
+          </button>
+          <button
+            className={`btn ${showLogs ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => { setShowLogs(!showLogs); if (!showLogs) fetchLogs(); }}
+          >
+            📝 Logs 日誌
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            onChange={handleImport}
+            style={{ display: 'none' }}
+          />
         </div>
       </div>
 
@@ -229,6 +289,35 @@ export default function History() {
         />
       )}
 
+      {/* Audit Logs */}
+      {showLogs && (
+        <div className="card" style={{ marginTop: '24px' }}>
+          <div className="card-header">
+            <h3 className="card-title">📝 Operation Log 操作日誌</h3>
+            <button className="btn btn-secondary" onClick={fetchLogs} style={{ fontSize: '0.8rem', padding: '4px 12px' }}>
+              ↻ Refresh
+            </button>
+          </div>
+          {logs.length > 0 ? (
+            <div className="log-list">
+              {logs.map(log => (
+                <div key={log.id} className="log-entry">
+                  <span className={`log-action log-action-${log.action.toLowerCase()}`}>
+                    {log.action}
+                  </span>
+                  <span className="log-detail">{log.detail || '—'}</span>
+                  <span className="log-time">
+                    {new Date(log.created_at + 'Z').toLocaleString('zh-TW')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>No logs yet</p>
+          )}
+        </div>
+      )}
+
       {toast && (
         <div className={`toast ${toast.type}`}>
           {toast.message}
@@ -237,4 +326,3 @@ export default function History() {
     </div>
   );
 }
-

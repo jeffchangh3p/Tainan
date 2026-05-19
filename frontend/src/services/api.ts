@@ -92,3 +92,39 @@ export async function getOverview(): Promise<OverviewSummary> {
   const { data } = await api.get('/summary/overview');
   return data;
 }
+
+// Export / Import
+export async function exportCSV(): Promise<void> {
+  const response = await api.get('/transactions/export', { responseType: 'blob' });
+  const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const today = new Date().toISOString().split('T')[0];
+  a.href = url;
+  a.download = `tainan_${today}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function importCSV(csvText: string): Promise<{
+  message: string;
+  imported: number;
+  skipped: number;
+  errors: string[];
+}> {
+  const { data } = await api.post('/transactions/import', { csv: csvText });
+  return data;
+}
+
+// Audit Logs
+export interface AuditLog {
+  id: number;
+  action: string;
+  detail: string | null;
+  created_at: string;
+}
+
+export async function getLogs(limit?: number): Promise<AuditLog[]> {
+  const { data } = await api.get('/logs', { params: { limit } });
+  return data;
+}

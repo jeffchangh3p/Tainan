@@ -5,6 +5,7 @@ import { initializeDatabase } from './db/database';
 import transactionsRouter from './routes/transactions';
 import categoriesRouter from './routes/categories';
 import summaryRouter from './routes/summary';
+import logsRouter from './routes/logs';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -14,7 +15,7 @@ app.use(cors({
   origin: true,
   credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 
 // Request logging
 app.use((req, _res, next) => {
@@ -26,6 +27,7 @@ app.use((req, _res, next) => {
 app.use('/api/transactions', transactionsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/summary', summaryRouter);
+app.use('/api/logs', logsRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {
