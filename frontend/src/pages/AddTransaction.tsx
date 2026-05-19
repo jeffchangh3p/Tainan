@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createTransaction, getCategories } from '../services/api';
 import type { Category, TransactionFormData } from '../types';
 import { FAMILY_MEMBERS } from '../types';
+import ReceiptUpload from '../components/ReceiptUpload';
 
 function getTodayDate(): string {
   const d = new Date();
@@ -14,6 +15,7 @@ export default function AddTransaction() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [receiptImage, setReceiptImage] = useState<string | null>(null);
 
   const [form, setForm] = useState<TransactionFormData>({
     amount: '',
@@ -56,6 +58,7 @@ export default function AddTransaction() {
         category_id: form.category_id,
         person: form.person || null,
         description: form.description || null,
+        receipt_image: receiptImage,
         date: form.date,
       });
 
@@ -70,6 +73,7 @@ export default function AddTransaction() {
         description: '',
         date: getTodayDate(),
       });
+      setReceiptImage(null);
 
       // Navigate after short delay
       setTimeout(() => navigate('/'), 1000);
@@ -197,6 +201,12 @@ export default function AddTransaction() {
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               rows={3}
             />
+          </div>
+
+          {/* Receipt Image */}
+          <div className="form-group">
+            <label className="form-label">Receipt 收據</label>
+            <ReceiptUpload image={receiptImage} onChange={setReceiptImage} />
           </div>
 
           {/* Submit */}

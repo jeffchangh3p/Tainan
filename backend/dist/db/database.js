@@ -76,6 +76,14 @@ async function initializeDatabase() {
     catch (_e) {
         // Column already exists — OK
     }
+    // Migration: add receipt_image column
+    try {
+        db.run('ALTER TABLE transactions ADD COLUMN receipt_image TEXT');
+        console.log('🖼️ Added receipt_image column to transactions');
+    }
+    catch (_e) {
+        // Column already exists — OK
+    }
     db.run('CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)');
     db.run('CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type)');
     db.run('CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id)');

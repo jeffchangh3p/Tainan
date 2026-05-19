@@ -75,6 +75,7 @@ export default function History() {
     category_id: number | null;
     person: string | null;
     description: string | null;
+    receipt_image: string | null;
     date: string;
   }) {
     try {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Transaction, Category } from '../types';
 import { FAMILY_MEMBERS } from '../types';
+import ReceiptUpload from './ReceiptUpload';
 
 interface Props {
   transaction: Transaction;
@@ -11,6 +12,7 @@ interface Props {
     category_id: number | null;
     person: string | null;
     description: string | null;
+    receipt_image: string | null;
     date: string;
   }) => Promise<void>;
   onClose: () => void;
@@ -25,6 +27,7 @@ export default function EditModal({ transaction, categories, onSave, onClose }: 
     description: transaction.description || '',
     date: transaction.date,
   });
+  const [receiptImage, setReceiptImage] = useState<string | null>(transaction.receipt_image || null);
   const [saving, setSaving] = useState(false);
 
   const filteredCategories = categories.filter(c => c.type === form.type);
@@ -49,6 +52,7 @@ export default function EditModal({ transaction, categories, onSave, onClose }: 
         category_id: form.category_id,
         person: form.person || null,
         description: form.description || null,
+        receipt_image: receiptImage,
         date: form.date,
       });
     } finally {
@@ -159,6 +163,12 @@ export default function EditModal({ transaction, categories, onSave, onClose }: 
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               rows={2}
             />
+          </div>
+
+          {/* Receipt Image */}
+          <div className="form-group">
+            <label className="form-label">Receipt 收據</label>
+            <ReceiptUpload image={receiptImage} onChange={setReceiptImage} />
           </div>
 
           {/* Actions */}

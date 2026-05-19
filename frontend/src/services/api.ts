@@ -33,6 +33,7 @@ export async function createTransaction(tx: {
   category_id?: number | null;
   person?: string | null;
   description?: string | null;
+  receipt_image?: string | null;
   date: string;
 }): Promise<Transaction> {
   const { data } = await api.post('/transactions', tx);
@@ -47,6 +48,7 @@ export async function updateTransaction(
     category_id: number | null;
     person: string | null;
     description: string | null;
+    receipt_image: string | null;
     date: string;
   }>
 ): Promise<Transaction> {

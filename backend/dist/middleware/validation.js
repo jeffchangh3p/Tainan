@@ -9,6 +9,7 @@ exports.createTransactionSchema = zod_1.z.object({
     category_id: zod_1.z.number().int().positive().nullable().optional(),
     person: zod_1.z.string().max(50).nullable().optional(),
     description: zod_1.z.string().max(500).nullable().optional(),
+    receipt_image: zod_1.z.string().max(700000).nullable().optional(),
     date: zod_1.z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD format'),
 });
 exports.updateTransactionSchema = exports.createTransactionSchema.partial();
